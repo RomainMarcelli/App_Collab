@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from './navbar';
+import { getPriorityColor, calculateSlaEndTime, formatSlaDuration } from '../utils/ticketUtils'; // Import the utility functions
 
 const ViewTickets = () => {
     const [tickets, setTickets] = useState([]);
@@ -12,15 +13,6 @@ const ViewTickets = () => {
     useEffect(() => {
         fetchTickets();
     }, []);
-
-    useEffect(() => {
-        // Démarre un minuteur pour chaque ticket lorsque le composant se monte
-        tickets.forEach((ticket) => {
-            if (!timers[ticket._id]) {
-                startTimer(ticket);
-            }
-        });
-    }, [tickets]);
 
     const fetchTickets = async () => {
         try {
@@ -36,7 +28,6 @@ const ViewTickets = () => {
             setLoading(false);
         }
     };
-
     const handleEdit = (ticket) => {
         setEditingTicket(ticket);
     };
@@ -89,68 +80,8 @@ const ViewTickets = () => {
         }
     };
 
-    const getPriorityColor = (priorite) => {
-        switch (priorite) {
-            case 1:
-                return 'bg-black text-white';
-            case 2:
-                return 'bg-red-500 text-white';
-            case 3:
-                return 'bg-yellow-500 text-black';
-            case 4:
-                return 'bg-blue-500 text-white';
-            case 5:
-                return 'bg-green-500 text-white';
-            default:
-                return '';
-        }
-    };
-
-    const priorityTimes = {
-        1: '15 minutes',
-        2: '30 minutes',
-        3: '4 heures',
-        4: '36 heures',
-        5: '60 heures',
-    };
-
-    const timerDurations = {
-        1: 15 * 60 * 1000, // 15 minutes en millisecondes
-        2: 30 * 60 * 1000, // 30 minutes
-        3: 4 * 60 * 60 * 1000, // 4 heures
-        4: 36 * 60 * 60 * 1000, // 36 heures
-        5: 60 * 60 * 1000, // 60 heures
-    };
-
-    const startTimer = (ticket) => {
-        const duration = timerDurations[ticket.priorite];
-        const endTime = Date.now() + duration;
-
-        setTimers((prev) => ({
-            ...prev,
-            [ticket._id]: { timeLeft: duration, interval: null },
-        }));
-
-        const interval = setInterval(() => {
-            setTimers((prev) => {
-                const newTimeLeft = prev[ticket._id]?.timeLeft - 1000;
-
-                if (newTimeLeft <= 0) {
-                    clearInterval(interval);
-                    alert(`Le temps pour le ticket ${ticket.numeroTicket} est écoulé!`);
-                    return prev;
-                }
-
-                return {
-                    ...prev,
-                    [ticket._id]: { timeLeft: newTimeLeft, interval },
-                };
-            });
-        }, 1000);
-    };
-
-    // Gestion du survol pour afficher le tooltip
-    const handleMouseOver = (e, description) => {
+      // Gestion du survol pour afficher le tooltip
+      const handleMouseOver = (e, description) => {
         setTooltip({
             visible: true,
             x: e.clientX,
@@ -179,119 +110,128 @@ const ViewTickets = () => {
                 {tickets.length === 0 ? (
                     <p className="text-center">Aucun ticket trouvé</p>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full bg-white border border-gray-200 table-auto">
-                            <thead>
-                                <tr className="bg-gray-100">
-                                    <th className="px-4 py-3 border text-center text-gray-600">Numéro</th>
-                                    <th className="px-4 py-3 border text-center text-gray-600">Priorité</th>
-                                    <th className="px-4 py-3 border text-center text-gray-600">Sujet</th>
-                                    <th className="px-4 py-3 border text-center text-gray-600">Description</th>
-                                    <th className="px-4 py-3 border text-center text-gray-600">Bénéficiaire</th>
-                                    <th className="px-4 py-3 border text-center text-gray-600">Date d'émission</th>
-                                    <th className="px-4 py-3 border text-center text-gray-600">SLA</th>
-                                    <th className="px-4 py-3 border text-center text-gray-600">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {tickets.map((ticket) => (
-                                    <tr key={ticket._id} className="hover:bg-gray-50 mb-10">
-                                        <td className="px-4 py-4 border text-center">{ticket.numeroTicket}</td>
-                                        <td className={`px-4 py-4 border text-center ${getPriorityColor(ticket.priorite)}`}>
-                                            {ticket.priorite}
-                                        </td>
-                                        <td className="px-4 py-4 border text-center">{ticket.sujet}</td>
-                                        <td
-                                            className="px-4 py-4 border text-center truncate max-w-xs relative"
-                                            onMouseOver={(e) => handleMouseOver(e, ticket.description)}
-                                            onMouseOut={handleMouseOut}
-                                        >
-                                            {ticket.description.length > 20 ? ticket.description.substring(0, 20) + '...' : ticket.description}
-                                        </td>
-                                        <td className="px-4 py-4 border text-center">{ticket.beneficiaire}</td>
-                                        <td className="px-4 py-4 border text-center">{new Date(ticket.dateEmission).toLocaleString()}</td>
-                                        <td className="px-4 py-4 border text-center">{priorityTimes[ticket.priorite]}</td>
-                                        <td className="px-4 py-4 border text-center flex flex-col items-center">
-                                            <button
-                                                className="cursor-pointer transition-all mb-2 bg-blue-500 text-white px-6 py-2 rounded-lg border-blue-600 border-b-[4px] hover:brightness-110 hover:-translate-y-[1px] hover:border-b-[6px] active:border-b-[2px] active:brightness-90 active:translate-y-[2px]"
-                                                onClick={() => handleEdit(ticket)}
-                                            >
-                                                Modifier
-                                            </button>
-                                            <button
-                                                className="cursor-pointer transition-all bg-red-500 text-white px-6 py-2 rounded-lg border-red-600 border-b-[4px] hover:brightness-110 hover:-translate-y-[1px] hover:border-b-[6px] active:border-b-[2px] active:brightness-90 active:translate-y-[2px]"
-                                                onClick={() => handleDelete(ticket._id)}
-                                            >
-                                                Supprimer
-                                            </button>
-                                        </td>
+                    <>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full bg-white border border-gray-200 table-auto">
+                                <thead>
+                                    <tr className="bg-gray-100">
+                                        <th className="px-4 py-3 border text-center text-gray-600">Numéro</th>
+                                        <th className="px-4 py-3 border text-center text-gray-600">Priorité</th>
+                                        <th className="px-4 py-3 border text-center text-gray-600">Sujet</th>
+                                        <th className="px-4 py-3 border text-center text-gray-600">Description</th>
+                                        <th className="px-4 py-3 border text-center text-gray-600">Bénéficiaire</th>
+                                        <th className="px-4 py-3 border text-center text-gray-600">Date d'émission</th>
+                                        <th className="px-4 py-3 border text-center text-gray-600">SLA</th>
+                                        <th className="px-4 py-3 border text-center text-gray-600">Actions</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                                </thead>
+                                <tbody>
+                                    {tickets.map((ticket) => {
+                                        const slaEndTime = calculateSlaEndTime(ticket);
+                                        const slaDuration = slaEndTime ? slaEndTime.getTime() - Date.now() : null;
 
-                {tooltip.visible && (
-                    <div
-                        className="absolute bg-gray-800 text-white p-2 rounded-md"
-                        style={{
-                            left: tooltip.x + 10,
-                            top: tooltip.y + 10,
-                            zIndex: 9999,
-                        }}
-                    >
-                        {tooltip.description}
-                    </div>
-                )}
+                                        return (
+                                            <tr key={ticket._id} className="hover:bg-gray-50 mb-10">
+                                                <td className="px-4 py-4 border text-center">{ticket.numeroTicket}</td>
+                                                <td className={`px-4 py-4 border text-center ${getPriorityColor(ticket.priorite)}`}>
+                                                    {ticket.priorite}
+                                                </td>
+                                                <td className="px-4 py-4 border text-center">{ticket.sujet}</td>
+                                                <td
+                                                    className="px-4 py-4 border text-center truncate max-w-xs cursor-pointer"
+                                                    onMouseOver={(e) => handleMouseOver(e, ticket.description)}
+                                                    onMouseOut={handleMouseOut}
+                                                >
+                                                    {ticket.description}
+                                                </td>
+                                                <td className="px-4 py-4 border text-center">{ticket.beneficiaire}</td>
+                                                <td className="px-4 py-4 border text-center">{new Date(ticket.dateEmission).toLocaleDateString()}</td>
+                                                <td className="px-4 py-4 border text-center">
+                                                    {slaDuration !== null ? formatSlaDuration(slaDuration) : 'Non défini'}
+                                                </td>
+                                                <td className="px-4 py-4 border text-center flex flex-col items-center">
+                                                    <button
+                                                        className="cursor-pointer transition-all mb-2 bg-blue-500 text-white px-6 py-2 rounded-lg border-blue-600 border-b-[4px] hover:brightness-110 hover:-translate-y-[1px] hover:border-b-[6px] active:border-b-[2px] active:brightness-90 active:translate-y-[2px]"
+                                                        onClick={() => handleEdit(ticket)}
+                                                    >
+                                                        Modifier
+                                                    </button>
+                                                    <button
+                                                        className="cursor-pointer transition-all bg-red-500 text-white px-6 py-2 rounded-lg border-red-600 border-b-[4px] hover:brightness-110 hover:-translate-y-[1px] hover:border-b-[6px] active:border-b-[2px] active:brightness-90 active:translate-y-[2px]"
+                                                        onClick={() => handleDelete(ticket._id)}
+                                                    >
+                                                        Supprimer
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
 
-                {editingTicket && (
-                    <div className="mt-4">
-                        <h3 className="text-lg font-bold mb-2">Modifier le Ticket</h3>
-                        <form onSubmit={handleUpdateTicket} className="flex flex-col">
-                            <input
-                                type="text"
-                                value={editingTicket.sujet}
-                                onChange={(e) => setEditingTicket({ ...editingTicket, sujet: e.target.value })}
-                                placeholder="Sujet"
-                                className="border rounded-md p-2 mb-2"
-                            />
-                            <input
-                                type="text"
-                                value={editingTicket.description}
-                                onChange={(e) => setEditingTicket({ ...editingTicket, description: e.target.value })}
-                                placeholder="Description"
-                                className="border rounded-md p-2 mb-2"
-                            />
-                            <input
-                                type="text"
-                                value={editingTicket.beneficiaire}
-                                onChange={(e) => setEditingTicket({ ...editingTicket, beneficiaire: e.target.value })}
-                                placeholder="Bénéficiaire"
-                                className="border rounded-md p-2 mb-2"
-                            />
-                            <input
-                                type="datetime-local"
-                                value={new Date(editingTicket.dateEmission).toISOString().slice(0, 16)}
-                                onChange={(e) => setEditingTicket({ ...editingTicket, dateEmission: e.target.value })}
-                                placeholder="Date d'émission"
-                                className="border rounded-md p-2 mb-2"
-                            />
-                            <button
-                                type="submit"
-                                className="bg-green-500 text-white p-2 rounded-md"
+                        {tooltip.visible && (
+                            <div
+                                className="absolute bg-gray-800 text-white p-2 rounded-md"
+                                style={{
+                                    left: tooltip.x + 10,
+                                    top: tooltip.y + 10,
+                                    zIndex: 9999,
+                                }}
                             >
-                                Enregistrer
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setEditingTicket(null)}
-                                className="bg-gray-500 text-white p-2 rounded-md mt-2"
-                            >
-                                Annuler
-                            </button>
-                        </form>
-                    </div>
+                                {tooltip.description}
+                            </div>
+                        )}
+
+                        {editingTicket && (
+                            <div className="mt-4">
+                                <h3 className="text-lg font-bold mb-2">Modifier le Ticket</h3>
+                                <form onSubmit={handleUpdateTicket} className="flex flex-col">
+                                    <input
+                                        type="text"
+                                        value={editingTicket.sujet}
+                                        onChange={(e) => setEditingTicket({ ...editingTicket, sujet: e.target.value })}
+                                        placeholder="Sujet"
+                                        className="border rounded-md p-2 mb-2"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={editingTicket.description}
+                                        onChange={(e) => setEditingTicket({ ...editingTicket, description: e.target.value })}
+                                        placeholder="Description"
+                                        className="border rounded-md p-2 mb-2"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={editingTicket.beneficiaire}
+                                        onChange={(e) => setEditingTicket({ ...editingTicket, beneficiaire: e.target.value })}
+                                        placeholder="Bénéficiaire"
+                                        className="border rounded-md p-2 mb-2"
+                                    />
+                                    <input
+                                        type="datetime-local"
+                                        value={new Date(editingTicket.dateEmission).toISOString().slice(0, 16)}
+                                        onChange={(e) => setEditingTicket({ ...editingTicket, dateEmission: e.target.value })}
+                                        placeholder="Date d'émission"
+                                        className="border rounded-md p-2 mb-2"
+                                    />
+                                    <button
+                                        type="submit"
+                                        className="bg-green-500 text-white p-2 rounded-md"
+                                    >
+                                        Enregistrer
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditingTicket(null)}
+                                        className="bg-gray-500 text-white p-2 rounded-md mt-2"
+                                    >
+                                        Annuler
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </>
