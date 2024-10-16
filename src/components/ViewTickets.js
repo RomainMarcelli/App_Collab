@@ -8,6 +8,7 @@ const ViewTickets = () => {
     const [error, setError] = useState(null);
     const [editingTicket, setEditingTicket] = useState(null);
     const [tooltip, setTooltip] = useState({ visible: false, description: '', x: 0, y: 0 });
+    const [tooltipVisible, setTooltipVisible] = useState(false);
     const [timers, setTimers] = useState({}); // Timer state
     const [popupVisible, setPopupVisible] = useState(false);
     const [popupMessage, setPopupMessage] = useState('');
@@ -40,6 +41,22 @@ const ViewTickets = () => {
 
         return () => clearInterval(interval);
     }, [tickets]);
+
+    const [formData, setFormData] = useState({
+        numeroTicket: '',
+        priorite: '1',
+        sujet: '',
+        description: '',
+        beneficiaire: '',
+        dateEmission: '',
+    });
+
+    const handleChange = (e) => {
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value,
+        });
+    };
 
     const updateTimers = () => {
         setTimers(prevTimers => {
@@ -76,9 +93,15 @@ const ViewTickets = () => {
     };
 
     const handleEdit = (ticket) => {
-        setEditingTicket(ticket);
+        if (editingTicket && editingTicket._id === ticket._id) {
+            // Fermez le tooltip si c'est le même ticket
+            setEditingTicket(null); // Assurez-vous de réinitialiser le ticket en cours d'édition
+        } else {
+            // Ouvrez le tooltip et définissez le ticket à éditer
+            setEditingTicket(ticket);
+            setTooltipVisible(true);
+        }
     };
-
     const handleUpdateTicket = async () => {
         try {
             const response = await fetch(`http://localhost:3000/api/tickets/${editingTicket._id}`, {
@@ -159,7 +182,7 @@ const ViewTickets = () => {
     return (
         <>
             <Navbar />
-            <div className="max-w-6xl mx-auto bg-white p-8 shadow-md rounded-lg overflow-x-auto">
+            <div className="mx-auto bg-white p-8 shadow-md rounded-lg overflow-x-auto">
                 <h2 className="text-2xl font-bold mb-6 text-center">Liste des Tickets</h2>
                 {tickets.length === 0 ? (
                     <p className="text-center">Aucun ticket trouvé</p>
@@ -222,7 +245,7 @@ const ViewTickets = () => {
                         </table>
                     </div>
                 )}
-    
+
                 {tooltip.visible && (
                     <div
                         className="absolute bg-gray-800 text-white p-2 rounded-md"
@@ -235,11 +258,31 @@ const ViewTickets = () => {
                         {tooltip.description}
                     </div>
                 )}
-    
+
                 {editingTicket && (
                     <div className="mt-4">
                         <h3 className="text-lg font-bold mb-2">Modifier le Ticket</h3>
                         <form onSubmit={handleUpdateTicket} className="flex flex-col">
+                            <input
+                                type="text"
+                                value={editingTicket.numeroTicket}
+                                onChange={(e) => setEditingTicket({ ...editingTicket, numeroTicket: e.target.value })}
+                                placeholder="Numéro"
+                                className="border rounded-md p-2 mb-2"
+                            />
+
+                            <select
+                                value={editingTicket.priorite}
+                                onChange={(e) => setEditingTicket({ ...editingTicket, priorite: e.target.value })}
+                                className="w-full px-3 py-2 mb-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                required
+                            >
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                            </select>
                             <input
                                 type="text"
                                 value={editingTicket.sujet}
@@ -284,7 +327,7 @@ const ViewTickets = () => {
                         </form>
                     </div>
                 )}
-    
+
                 {popupVisible && (
                     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
                         <div className="bg-white p-6 rounded shadow-md">
@@ -298,6 +341,6 @@ const ViewTickets = () => {
             </div>
         </>
     );
-};    
+};
 
 export default ViewTickets;

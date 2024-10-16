@@ -16,6 +16,8 @@ export const slaDurations = {
     5: 5 * 24 * 60 * 60 * 1000  // 5 jours pour P5
 };
 
+
+
 // Fonction pour formater la durée (Générique)
 export const formatDuration = (duration) => {
     const msInHour = 60 * 60 * 1000;

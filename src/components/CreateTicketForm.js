@@ -54,7 +54,7 @@ const CreateTicketForm = () => {
     const priorityColors = {
         '1': 'bg-black text-white', // Priorité 1
         '2': 'bg-red-500 text-white', // Priorité 2
-        '3': 'bg-yellow-500 text-black', // Priorité 3
+        '3': 'bg-yellow-500 text-white', // Priorité 3
         '4': 'bg-blue-500 text-white', // Priorité 4
         '5': 'bg-green-500 text-white', // Priorité 5
     };
