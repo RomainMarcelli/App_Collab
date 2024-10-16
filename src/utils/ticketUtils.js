@@ -55,3 +55,5 @@ export const formatSlaEndTime = (endTime) => {
 
 // Vous pouvez également mettre à jour vos fonctions de formatage pour utiliser formatDuration
 export const formatSlaDuration = (duration) => formatDuration(duration);
+
+

@@ -12,6 +12,13 @@ const ViewTickets = () => {
     const [timers, setTimers] = useState({}); // Timer state
     const [popupVisible, setPopupVisible] = useState(false);
     const [popupMessage, setPopupMessage] = useState('');
+    const [closedTickets, setClosedTickets] = useState([]); // Store closed ticket IDs
+    const [isPopupDisplayed, setIsPopupDisplayed] = useState(false); // Nouveau drapeau
+
+
+
+
+
 
     // Define SLA and timer durations based on ticket priorities
     const slaDurations = {
@@ -23,25 +30,12 @@ const ViewTickets = () => {
     };
 
     const timerDurations = {
-        1: 30 * 60 * 1000,         // 30 minutes for P1
+        1: 1 * 10 * 1000,         // 30 minutes for P1
         2: 1 * 60 * 60 * 1000,     // 1 hour for P2
         3: 4 * 60 * 60 * 1000,     // 4 hours for P3
         4: 35 * 60 * 60 * 1000,    // 35 hours for P4
         5: 72 * 60 * 60 * 1000, // 1 week in milliseconds
     };
-
-    useEffect(() => {
-        fetchTickets();
-    }, []);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            updateTimers();
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [tickets]);
-
     const [formData, setFormData] = useState({
         numeroTicket: '',
         priorite: '1',
@@ -51,31 +45,95 @@ const ViewTickets = () => {
         dateEmission: '',
     });
 
-    const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value,
-        });
-    };
-
+    // Mise à jour des timers
     const updateTimers = () => {
         setTimers(prevTimers => {
             const newTimers = { ...prevTimers };
             tickets.forEach(ticket => {
-                if (newTimers[ticket._id]) {
-                    newTimers[ticket._id] -= 1000; // Diminuer le temps restant de 1 seconde
-                    if (newTimers[ticket._id] <= 0) {
-                        setPopupMessage(`Il faut relancer le ticket ${ticket.numeroTicket} c'est une P${ticket.priorite}`);
-                        setPopupVisible(true);
-                        newTimers[ticket._id] = 0; // Arrêter le timer à 0
-                    }
-                } else {
-                    newTimers[ticket._id] = timerDurations[ticket.priorite]; // Initialiser le timer
-                }
+                // Skip closed tickets
+                if (closedTickets.includes(ticket._id)) return;
+
+                const now = Date.now();
+                const ticketStartTime = new Date(ticket.dateEmission).getTime();
+                const elapsedTime = now - ticketStartTime;
+
+                const totalDuration = timerDurations[ticket.priorite];
+                const remainingTime = totalDuration - elapsedTime;
+
+                // Met à jour les minuteries
+                newTimers[ticket._id] = remainingTime <= 0 ? 0 : remainingTime;
             });
             return newTimers;
         });
     };
+
+    // Gérer l'affichage de la popup en fonction des timers
+    const checkPopupDisplay = () => {
+        tickets.forEach(ticket => {
+            if (!closedTickets.includes(ticket._id)) {
+                const now = Date.now();
+                const ticketStartTime = new Date(ticket.dateEmission).getTime();
+                const elapsedTime = now - ticketStartTime;
+
+                const totalDuration = timerDurations[ticket.priorite];
+                const remainingTime = totalDuration - elapsedTime;
+
+                // Afficher la popup si le temps est écoulé
+                if (remainingTime <= 0) {
+                    setPopupMessage(`Il faut relancer le ticket ${ticket.numeroTicket} c'est une P${ticket.priorite}`);
+                    setPopupVisible(true);
+                }
+            }
+        });
+    };
+
+    const handleClosePopup = () => {
+        console.log("Message popup:", popupMessage);
+
+        // Extraction du numéro de ticket
+        const ticketNumber = popupMessage.split(' ')[5]; // Vérifiez l'index en fonction du format
+        console.log("Numéro de ticket extrait:", ticketNumber);
+
+        // Recherche du ticket à fermer
+        const ticketToClose = tickets.find(ticket => ticket.numeroTicket === ticketNumber);
+
+        // Affichage des tickets disponibles et du ticket trouvé
+        console.log("Tickets disponibles:", tickets);
+        console.log("Ticket trouvé:", ticketToClose);
+
+        if (ticketToClose) {
+            setClosedTickets(prev => [...prev, ticketToClose._id]); // Ajout du ticket fermé
+            setPopupVisible(false); // Fermeture de la popup
+            console.log("Popup fermée.");
+        } else {
+            console.error("Ticket non trouvé pour le numéro:", ticketNumber);
+        }
+    };
+
+    // useEffect pour récupérer les tickets
+    useEffect(() => {
+        fetchTickets();
+    }, []);
+
+    // useEffect pour mettre à jour les timers
+    useEffect(() => {
+        const interval = setInterval(() => {
+            updateTimers();
+        }, 1000); // Met à jour les timers toutes les secondes
+
+        return () => clearInterval(interval);
+    }, [tickets]);
+
+    // useEffect pour vérifier l'affichage de la popup
+    useEffect(() => {
+        const interval = setInterval(() => {
+            checkPopupDisplay();
+        }, 10000); // Vérifie l'affichage de la popup toutes les secondes
+
+        return () => clearInterval(interval);
+    }, [tickets]);
+
+
 
     const fetchTickets = async () => {
         try {
@@ -327,17 +385,22 @@ const ViewTickets = () => {
                         </form>
                     </div>
                 )}
-
                 {popupVisible && (
-                    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                        <div className="bg-white p-6 rounded shadow-md">
-                            <h3 className="text-lg font-bold">{popupMessage}</h3>
-                            <button className="mt-4 bg-blue-500 text-white px-4 py-2 rounded" onClick={() => setPopupVisible(false)}>
+                    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+                        <div className="bg-white p-6 rounded-lg shadow-md popup">
+                            <h3 className="text-lg font-bold mb-2">Alerte de Ticket</h3>
+                            <p>{popupMessage}</p>
+                            <button
+                                onClick={handleClosePopup}
+                                className="mt-4 bg-red-500 text-white px-4 py-2 rounded"
+                            >
                                 Fermer
                             </button>
                         </div>
                     </div>
                 )}
+
+
             </div>
         </>
     );
