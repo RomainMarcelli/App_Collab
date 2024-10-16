@@ -1,18 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from './navbar';
-import { getPriorityColor, calculateSlaEndTime, formatSlaDuration } from '../utils/ticketUtils'; // Import the utility functions
+import { getPriorityColor, calculateSlaEndTime, formatSlaDuration, startTicketTimer, formatRemainingTime, ticketDurations } from '../utils/ticketUtils';
 
 const ViewTickets = () => {
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [editingTicket, setEditingTicket] = useState(null); // Pour stocker le ticket à modifier
-    const [tooltip, setTooltip] = useState({ visible: false, description: '', x: 0, y: 0 }); // État pour le tooltip
-    const [timers, setTimers] = useState({});
+    const [editingTicket, setEditingTicket] = useState(null);
+    const [tooltip, setTooltip] = useState({ visible: false, description: '', x: 0, y: 0 });
+    const [timers, setTimers] = useState({}); // État pour stocker les timers pour chaque ticket
 
     useEffect(() => {
         fetchTickets();
     }, []);
+
+    useEffect(() => {
+        const intervalId = setInterval(() => {
+            updateTimers();
+        }, 1000); // Actualise le timer toutes les secondes
+
+        return () => clearInterval(intervalId); // Nettoyer l'intervalle lors de la destruction du composant
+    }, [tickets]);
+
+    useEffect(() => {
+        tickets.forEach(ticket => {
+            startTicketTimer(ticket._id);
+        });
+    }, [tickets]);
 
     const fetchTickets = async () => {
         try {
@@ -23,11 +37,55 @@ const ViewTickets = () => {
             const data = await response.json();
             setTickets(data);
             setLoading(false);
+
+            // Initialiser les timers pour chaque ticket
+            const initialTimers = {};
+            data.forEach(ticket => {
+                initialTimers[ticket._id] = calculateRemainingTime(ticket);
+            });
+            setTimers(initialTimers);
         } catch (error) {
             setError(error.message);
             setLoading(false);
         }
     };
+
+    // Fonction pour calculer le temps restant pour un ticket
+    const calculateRemainingTime = (ticket) => {
+        const slaEndTime = calculateSlaEndTime(ticket); // Calcule la date de fin SLA
+        const currentTime = Date.now();
+        return slaEndTime ? slaEndTime.getTime() - currentTime : null; // Durée restante en millisecondes
+    };
+
+    // Fonction pour mettre à jour les timers
+    const updateTimers = () => {
+        const updatedTimers = { ...timers };
+        tickets.forEach(ticket => {
+            const remainingTime = calculateRemainingTime(ticket);
+            updatedTimers[ticket._id] = remainingTime;
+            // Vérifie si le timer a atteint zéro
+            if (remainingTime <= 0) {
+                notifyUser(ticket); // Appelle la fonction de notification
+                updatedTimers[ticket._id] = 0; // Définit le timer à zéro
+            }
+        });
+        setTimers(updatedTimers);
+    };
+
+    const notifyUser = (ticket) => {
+        alert(`Le ticket ${ticket.numeroTicket} a atteint la fin de sa durée !`); // Notification simple
+    };
+
+    // Formater le temps en HH:MM:SS
+    const formatTimer = (milliseconds) => {
+        if (milliseconds <= 0) return "00:00:00"; // Si le temps est épuisé, retourner 0
+        const totalSeconds = Math.floor(milliseconds / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    };
+
     const handleEdit = (ticket) => {
         setEditingTicket(ticket);
     };
@@ -46,8 +104,8 @@ const ViewTickets = () => {
                 throw new Error('Erreur lors de la mise à jour du ticket');
             }
 
-            setEditingTicket(null); // Ferme le formulaire d'édition
-            fetchTickets(); // Rafraîchir la liste après modification
+            setEditingTicket(null);
+            fetchTickets();
         } catch (error) {
             console.error('Erreur de mise à jour:', error);
         }
@@ -80,8 +138,8 @@ const ViewTickets = () => {
         }
     };
 
-      // Gestion du survol pour afficher le tooltip
-      const handleMouseOver = (e, description) => {
+    // Gestion du survol pour afficher le tooltip
+    const handleMouseOver = (e, description) => {
         setTooltip({
             visible: true,
             x: e.clientX,
@@ -122,6 +180,7 @@ const ViewTickets = () => {
                                         <th className="px-4 py-3 border text-center text-gray-600">Bénéficiaire</th>
                                         <th className="px-4 py-3 border text-center text-gray-600">Date d'émission</th>
                                         <th className="px-4 py-3 border text-center text-gray-600">SLA</th>
+                                        <th className="px-4 py-3 border text-center text-gray-600">Timer</th> {/* Nouvelle colonne Timer */}
                                         <th className="px-4 py-3 border text-center text-gray-600">Actions</th>
                                     </tr>
                                 </thead>
@@ -149,15 +208,19 @@ const ViewTickets = () => {
                                                 <td className="px-4 py-4 border text-center">
                                                     {slaDuration !== null ? formatSlaDuration(slaDuration) : 'Non défini'}
                                                 </td>
-                                                <td className="px-4 py-4 border text-center flex flex-col items-center">
+                                                <td className="px-4 py-4 border text-center" id={`timer-${ticket._id}`}>
+                                                    {formatRemainingTime(ticketDurations[ticket._id] || 0)} {/* Temps initial ici */}
+                                                </td>
+                                                {/* Timer */}
+                                                <td className="px-4 py-4 border text-center">
                                                     <button
-                                                        className="cursor-pointer transition-all mb-2 bg-blue-500 text-white px-6 py-2 rounded-lg border-blue-600 border-b-[4px] hover:brightness-110 hover:-translate-y-[1px] hover:border-b-[6px] active:border-b-[2px] active:brightness-90 active:translate-y-[2px]"
+                                                        className="cursor-pointer transition-all bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
                                                         onClick={() => handleEdit(ticket)}
                                                     >
                                                         Modifier
                                                     </button>
                                                     <button
-                                                        className="cursor-pointer transition-all bg-red-500 text-white px-6 py-2 rounded-lg border-red-600 border-b-[4px] hover:brightness-110 hover:-translate-y-[1px] hover:border-b-[6px] active:border-b-[2px] active:brightness-90 active:translate-y-[2px]"
+                                                        className="cursor-pointer transition-all bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
                                                         onClick={() => handleDelete(ticket._id)}
                                                     >
                                                         Supprimer
@@ -169,69 +232,15 @@ const ViewTickets = () => {
                                 </tbody>
                             </table>
                         </div>
-
-                        {tooltip.visible && (
-                            <div
-                                className="absolute bg-gray-800 text-white p-2 rounded-md"
-                                style={{
-                                    left: tooltip.x + 10,
-                                    top: tooltip.y + 10,
-                                    zIndex: 9999,
-                                }}
-                            >
-                                {tooltip.description}
-                            </div>
-                        )}
-
-                        {editingTicket && (
-                            <div className="mt-4">
-                                <h3 className="text-lg font-bold mb-2">Modifier le Ticket</h3>
-                                <form onSubmit={handleUpdateTicket} className="flex flex-col">
-                                    <input
-                                        type="text"
-                                        value={editingTicket.sujet}
-                                        onChange={(e) => setEditingTicket({ ...editingTicket, sujet: e.target.value })}
-                                        placeholder="Sujet"
-                                        className="border rounded-md p-2 mb-2"
-                                    />
-                                    <input
-                                        type="text"
-                                        value={editingTicket.description}
-                                        onChange={(e) => setEditingTicket({ ...editingTicket, description: e.target.value })}
-                                        placeholder="Description"
-                                        className="border rounded-md p-2 mb-2"
-                                    />
-                                    <input
-                                        type="text"
-                                        value={editingTicket.beneficiaire}
-                                        onChange={(e) => setEditingTicket({ ...editingTicket, beneficiaire: e.target.value })}
-                                        placeholder="Bénéficiaire"
-                                        className="border rounded-md p-2 mb-2"
-                                    />
-                                    <input
-                                        type="datetime-local"
-                                        value={new Date(editingTicket.dateEmission).toISOString().slice(0, 16)}
-                                        onChange={(e) => setEditingTicket({ ...editingTicket, dateEmission: e.target.value })}
-                                        placeholder="Date d'émission"
-                                        className="border rounded-md p-2 mb-2"
-                                    />
-                                    <button
-                                        type="submit"
-                                        className="bg-green-500 text-white p-2 rounded-md"
-                                    >
-                                        Enregistrer
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setEditingTicket(null)}
-                                        className="bg-gray-500 text-white p-2 rounded-md mt-2"
-                                    >
-                                        Annuler
-                                    </button>
-                                </form>
-                            </div>
-                        )}
                     </>
+                )}
+                {tooltip.visible && (
+                    <div
+                        className="absolute z-10 px-4 py-2 bg-gray-200 rounded shadow-md text-sm"
+                        style={{ top: tooltip.y + 10, left: tooltip.x + 10 }}
+                    >
+                        {tooltip.description}
+                    </div>
                 )}
             </div>
         </>

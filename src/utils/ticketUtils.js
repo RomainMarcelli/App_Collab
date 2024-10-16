@@ -48,6 +48,16 @@ export const formatSlaDuration = (duration) => {
     }
 };
 
+// Durées en fonction de chaque ticket (en millisecondes)
+export const ticketDurations = {
+    1 : 30 * 60 * 1000, // 30 minutes pour ticketId1
+    2 : 1 * 60 * 60 * 1000, // 1 heure pour ticketId2
+    3 : 2 * 60 * 60 * 1000,
+    4 : 3 * 24 * 60 * 60 * 1000,
+    5 : 4 * 24 * 60 * 60 * 1000,
+    // Ajouter d'autres tickets selon vos besoins
+};
+
 // Fonction pour obtenir la couleur de la priorité
 export const getPriorityColor = (priorite) => {
     switch (priorite) {
@@ -65,3 +75,48 @@ export const formatSlaEndTime = (endTime) => {
     if (!endTime) return "Non défini";
     return new Date(endTime).toLocaleString();
 };
+
+
+
+// Fonction pour démarrer un timer pour un ticket donné
+export const startTicketTimer = (ticketId) => {
+    const duration = ticketDurations[ticketId];
+    if (!duration) {
+        console.error("Durée non définie pour le ticket:", ticketId);
+        return;
+    }
+
+    let remainingTime = duration;
+    const intervalId = setInterval(() => {
+        if (remainingTime <= 0) {
+            clearInterval(intervalId);
+            notifyUser(ticketId);
+        } else {
+            remainingTime -= 1000; // Décrémenter le temps restant chaque seconde
+            updateTimerDisplay(ticketId, remainingTime);
+        }
+    }, 1000);
+};
+
+// Fonction pour notifier l'utilisateur lorsque le temps est écoulé
+const notifyUser = (ticketId) => {
+    alert(`Le temps pour le ticket ${ticketId} est écoulé !`);
+};
+
+// Fonction pour mettre à jour l'affichage du timer
+const updateTimerDisplay = (ticketId, remainingTime) => {
+    // Mettre à jour l'état ou le DOM pour refléter le temps restant
+    const formattedTime = formatRemainingTime(remainingTime);
+    document.getElementById(`timer-${ticketId}`).innerText = formattedTime; // Par exemple
+};
+
+// In your ticketUtils.js or relevant file
+export const formatRemainingTime = (milliseconds) => {
+    if (milliseconds <= 0) return "00:00:00"; // Return 0 if time is up
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+};
+
