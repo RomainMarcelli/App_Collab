@@ -160,6 +160,19 @@ app.put('/api/tickets/:id/affecter', async (req, res) => {
     }
 });
 
+// Route pour récupérer les tickets affectés à un collaborateur
+app.get('/api/tickets/affectes/:collaborateurId', async (req, res) => {
+    const { collaborateurId } = req.params;
+
+    try {
+        const tickets = await Ticket.find({ collaborateur: collaborateurId });
+        res.json(tickets);
+    } catch (error) {
+        res.status(500).json({ message: 'Erreur lors de la récupération des tickets affectés', error });
+    }
+});
+
+
 // Utilisation des routes des collaborateurs
 app.use('/api', collaborateurRoutes);
 

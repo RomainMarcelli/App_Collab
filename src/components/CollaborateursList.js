@@ -5,8 +5,9 @@ const CollaborateursList = () => {
     const [collaborateurs, setCollaborateurs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [tickets, setTickets] = useState([]); // State pour stocker les tickets
-    const [selectedCollaborateur, setSelectedCollaborateur] = useState(null); // State pour le collaborateur sélectionné
+    const [tickets, setTickets] = useState([]);
+    const [selectedCollaborateur, setSelectedCollaborateur] = useState(null);
+    const [loadingTickets, setLoadingTickets] = useState(false); // État pour le chargement des tickets
 
     useEffect(() => {
         const fetchCollaborateurs = async () => {
@@ -27,19 +28,41 @@ const CollaborateursList = () => {
         fetchCollaborateurs();
     }, []);
 
-    // Fonction pour récupérer les tickets affectés à un collaborateur
     const handleVoirTickets = async (collaborateurId) => {
+        setLoadingTickets(true); // Démarrer le chargement des tickets
         try {
             const response = await fetch(`http://localhost:3000/api/tickets/affectes/${collaborateurId}`);
             if (!response.ok) {
                 throw new Error('Erreur lors de la récupération des tickets affectés.');
             }
             const data = await response.json();
-            setTickets(data); // Stocker les tickets dans le state
-            setSelectedCollaborateur(collaborateurId); // Définir le collaborateur sélectionné
+            setTickets(data);
+            setSelectedCollaborateur(collaborateurId);
         } catch (err) {
             setError(err.message);
+        } finally {
+            setLoadingTickets(false); // Fin du chargement des tickets
         }
+    };
+
+    const renderTickets = () => {
+        if (loadingTickets) {
+            return <p className="text-gray-600">Chargement des tickets...</p>;
+        }
+
+        if (tickets.length === 0) {
+            return <p>Aucun ticket affecté à ce collaborateur.</p>;
+        }
+
+        return (
+            <ul>
+                {tickets.map((ticket) => (
+                    <li key={ticket._id} className="mb-2 p-2 border border-gray-300 rounded">
+                        {ticket.sujet} - {ticket.description}
+                    </li>
+                ))}
+            </ul>
+        );
     };
 
     return (
@@ -75,7 +98,7 @@ const CollaborateursList = () => {
                                                 className="bg-blue-500 text-white px-4 py-2 rounded"
                                                 onClick={() => handleVoirTickets(collab._id)}
                                             >
-                                                Voir les tickets affecté
+                                                Voir les tickets affectés
                                             </button>
                                         </td>
                                     </tr>
@@ -86,17 +109,7 @@ const CollaborateursList = () => {
                         {selectedCollaborateur && (
                             <div className="mt-6">
                                 <h3 className="text-xl font-bold mb-4">Tickets affectés au collaborateur sélectionné :</h3>
-                                {tickets.length === 0 ? (
-                                    <p>Aucun ticket affecté à ce collaborateur.</p>
-                                ) : (
-                                    <ul>
-                                        {tickets.map((ticket) => (
-                                            <li key={ticket._id} className="mb-2 p-2 border border-gray-300 rounded">
-                                                {ticket.sujet} - {ticket.description}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
+                                {renderTickets()}
                             </div>
                         )}
                     </div>

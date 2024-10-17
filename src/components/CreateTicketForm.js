@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom'; // Ajoutez cette ligne
 import Navbar from './navbar'; // Assurez-vous que le chemin est correct
 
 const CreateTicketForm = () => {
@@ -66,13 +67,22 @@ const CreateTicketForm = () => {
         4: '3 jours',
         5: '5 jours',
     };
-    
 
     return (
         <>
             <Navbar />
+                {/* Bouton pour naviguer vers CreateCollab */}
+                <div className="flex justify-end mt-4 mr-10 absolute right-1">
+                    <Link to="/create-Collab">
+                        <button className="bg-indigo-500 text-white px-4 py-2 rounded-md hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            Ajouter Collaborateur
+                        </button>
+                    </Link>
+                </div>
             <div className="max-w-md mx-auto bg-white p-8 shadow-md rounded-lg">
                 <h2 className="text-2xl font-bold mb-6 text-center">Créer un Ticket</h2>
+                
+
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">
                         <label className="block text-gray-700">Numéro du Ticket</label>
