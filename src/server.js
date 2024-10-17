@@ -4,6 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const collaborateurRoutes = require('./routes/collabRoute'); // Si les routes sont dans un fichier séparé
 const Collaborateur = require('./models/collabModel'); // Importer le modèle ici
+const Ticket = require('./models/ticketModel'); // Importer le modèle ici
 
 // Initialiser l'application Express
 const app = express();
@@ -23,16 +24,16 @@ mongoose.connect('mongodb://localhost:27017/CDS', {
     console.error('Erreur de connexion à MongoDB:', error);
 });
 
-// Modèle Mongoose pour les tickets
-const ticketSchema = new mongoose.Schema({
-    numeroTicket: { type: String, required: true },
-    priorite: { type: Number, required: true },
-    sujet: { type: String, required: true },
-    description: { type: String, required: true },
-    beneficiaire: { type: String, required: true },
-    dateEmission: { type: Date, required: true },
-});
-const Ticket = mongoose.model('Ticket', ticketSchema);
+// // Modèle Mongoose pour les tickets
+// const ticketSchema = new mongoose.Schema({
+//     numeroTicket: { type: String, required: true },
+//     priorite: { type: Number, required: true },
+//     sujet: { type: String, required: true },
+//     description: { type: String, required: true },
+//     beneficiaire: { type: String, required: true },
+//     dateEmission: { type: Date, required: true },
+// });
+// const Ticket = mongoose.model('Ticket', ticketSchema);
 
 // Route pour récupérer les tickets
 app.get('/api/tickets', async (req, res) => {
@@ -131,6 +132,31 @@ app.post('/api/collaborateurs', async (req, res) => {
         res.status(201).json({ message: 'Collaborateur ajouté avec succès' });
     } catch (error) {
         res.status(500).json({ message: 'Erreur lors de l\'ajout du collaborateur', error });
+    }
+});
+
+// Route pour affecter un collaborateur à un ticket
+app.put('/api/tickets/:id/affecter', async (req, res) => {
+    const { id } = req.params;
+    const { collaborateurId } = req.body;
+
+    try {
+        const updatedTicket = await Ticket.findByIdAndUpdate(
+            id,
+            { 
+                collaborateur: collaborateurId, // Associer le collaborateur
+                estAffecte: true // Marquer le ticket comme affecté
+            },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedTicket) {
+            return res.status(404).json({ message: 'Ticket non trouvé' });
+        }
+
+        res.json({ message: 'Ticket affecté avec succès', ticket: updatedTicket });
+    } catch (error) {
+        res.status(500).json({ message: 'Erreur lors de l\'affectation du ticket', error });
     }
 });
 

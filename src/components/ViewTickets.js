@@ -30,7 +30,7 @@ const ViewTickets = () => {
     };
 
     const timerDurations = {
-        1: 1 * 10 * 1000,         // 30 minutes for P1
+        1: 30 * 60 * 1000,         // 30 minutes for P1
         2: 1 * 60 * 60 * 1000,     // 1 hour for P2
         3: 4 * 60 * 60 * 1000,     // 4 hours for P3
         4: 35 * 60 * 60 * 1000,    // 35 hours for P4
