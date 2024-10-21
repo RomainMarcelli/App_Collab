@@ -2,6 +2,11 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import CreateTicketForm from './components/CreateTicketForm';
 import ViewTickets from './components/ViewTickets';
+import CreateCollab from './components/CreateCollab';
+import CollaborateursList from './components/CollaborateursList';
+import AffecterTickets from './components/AffecterTickets';
+import ViewName from './components/viewName';
+
 
 const App = () => {
     return (
@@ -10,6 +15,10 @@ const App = () => {
                 <Routes>
                     <Route path="/create-ticket" element={<CreateTicketForm />} />
                     <Route path="/view-tickets" element={<ViewTickets />} />
+                    <Route path="/create-collab" element={<CreateCollab />} />
+                    <Route path="/view-collab" element={<CollaborateursList />} />
+                    <Route path="/affecter-ticket" element={<AffecterTickets />} />
+                    <Route path="/view-name" element={<ViewName />} />
                     {/* Route par défaut */}
                     <Route exact path="/" element={<CreateTicketForm />} />
                 </Routes>
