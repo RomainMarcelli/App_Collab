@@ -24,17 +24,6 @@ mongoose.connect('mongodb://localhost:27017/CDS', {
     console.error('Erreur de connexion à MongoDB:', error);
 });
 
-// // Modèle Mongoose pour les tickets
-// const ticketSchema = new mongoose.Schema({
-//     numeroTicket: { type: String, required: true },
-//     priorite: { type: Number, required: true },
-//     sujet: { type: String, required: true },
-//     description: { type: String, required: true },
-//     beneficiaire: { type: String, required: true },
-//     dateEmission: { type: Date, required: true },
-// });
-// const Ticket = mongoose.model('Ticket', ticketSchema);
-
 // Route pour récupérer les tickets
 app.get('/api/tickets', async (req, res) => {
     try {

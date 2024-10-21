@@ -2,8 +2,12 @@ import React, { useEffect, useState } from 'react';
 import Navbar from './navbar';
 import { getPriorityColor, formatSlaDuration } from '../utils/ticketUtils'; // Import the utility functions
 
+// const Collaborateur = require('../models/collabModel');
+
+
 const ViewTickets = () => {
     const [tickets, setTickets] = useState([]);
+    const [collaborateurs, setCollaborateurs] = useState([]); // État pour les collaborateurs
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [editingTicket, setEditingTicket] = useState(null);
@@ -14,11 +18,6 @@ const ViewTickets = () => {
     const [popupMessage, setPopupMessage] = useState('');
     const [closedTickets, setClosedTickets] = useState([]); // Store closed ticket IDs
     const [isPopupDisplayed, setIsPopupDisplayed] = useState(false); // Nouveau drapeau
-
-
-
-
-
 
     // Define SLA and timer durations based on ticket priorities
     const slaDurations = {
@@ -67,6 +66,19 @@ const ViewTickets = () => {
         });
     };
 
+    const fetchCollaborateurs = async () => {
+        try {
+            const response = await fetch('http://localhost:3000/api/collaborateurs');
+            if (!response.ok) {
+                throw new Error('Erreur lors de la récupération des collaborateurs');
+            }
+            const data = await response.json();
+            setCollaborateurs(data); // Stockage des collaborateurs
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
     // Gérer l'affichage de la popup en fonction des timers
     const checkPopupDisplay = () => {
         tickets.forEach(ticket => {
@@ -112,6 +124,7 @@ const ViewTickets = () => {
 
     // useEffect pour récupérer les tickets
     useEffect(() => {
+        fetchCollaborateurs(); // Récupération des collaborateurs
         fetchTickets();
     }, []);
 
@@ -250,6 +263,7 @@ const ViewTickets = () => {
                             <thead>
                                 <tr className="bg-gray-100">
                                     <th className="px-4 py-3 border text-center text-gray-600">Numéro</th>
+                                    <th className="px-4 py-3 border text-center text-gray-600">Collaborateur</th>
                                     <th className="px-4 py-3 border text-center text-gray-600">Priorité</th>
                                     <th className="px-4 py-3 border text-center text-gray-600">Sujet</th>
                                     <th className="px-4 py-3 border text-center text-gray-600">Description</th>
@@ -264,6 +278,9 @@ const ViewTickets = () => {
                                 {tickets.map((ticket) => (
                                     <tr key={ticket._id} className="hover:bg-gray-50 mb-10">
                                         <td className="px-4 py-4 border text-center">{ticket.numeroTicket}</td>
+                                        <td className="border px-4 py-2 text-center">
+                                            {ticket.collaborateur ? ticket.collaborateur.nom : 'Aucun'}
+                                        </td>   
                                         <td className={`px-4 py-4 border text-center ${getPriorityColor(ticket.priorite)}`}>
                                             {ticket.priorite}
                                         </td>
@@ -401,7 +418,7 @@ const ViewTickets = () => {
                 )}
 
 
-            </div>
+            </div >
         </>
     );
 };
