@@ -19,6 +19,7 @@ const ViewTickets = () => {
     const [closedTickets, setClosedTickets] = useState([]); // Store closed ticket IDs
     const [isPopupDisplayed, setIsPopupDisplayed] = useState(false); // Nouveau drapeau
 
+
     // Define SLA and timer durations based on ticket priorities
     const slaDurations = {
         1: 1 * 60 * 60 * 1000,
@@ -279,8 +280,8 @@ const ViewTickets = () => {
                                     <tr key={ticket._id} className="hover:bg-gray-50 mb-10">
                                         <td className="px-4 py-4 border text-center">{ticket.numeroTicket}</td>
                                         <td className="border px-4 py-2 text-center">
-                                            {ticket.collaborateur ? ticket.collaborateur.nom : 'Aucun'}
-                                        </td>   
+                                            {collaborateurs.find(collab => collab._id === ticket.collaborateur)?.nom || 'Non attribué'}
+                                        </td>
                                         <td className={`px-4 py-4 border text-center ${getPriorityColor(ticket.priorite)}`}>
                                             {ticket.priorite}
                                         </td>
