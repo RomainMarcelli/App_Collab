@@ -1,7 +1,7 @@
 import React from 'react';
 import { getPriorityColor, formatSlaDuration } from '../../utils/ticketUtils';
 
-const TicketRow = ({ ticket, collaborateurs, getPriorityColor, handleEdit, handleDelete, tooltip, handleMouseOver, handleMouseOut, formatTime, timers }) => {
+const TicketRow = ({ ticket, collaborateurs, getPriorityColor, handleEdit, handleDelete, tooltip, handleMouseOver, handleMouseOut, formatTime, timers, handleCloseTicket }) => {
     
     const slaDurations = {
         1: 1 * 60 * 60 * 1000,
@@ -48,6 +48,12 @@ const TicketRow = ({ ticket, collaborateurs, getPriorityColor, handleEdit, handl
                     onClick={() => handleDelete(ticket._id)}
                 >
                     Supprimer
+                </button>
+                <button
+                    className="cursor-pointer transition-all mt-2 bg-green-500 text-white px-6 py-2 rounded-lg border-green-600 border-b-[4px] hover:brightness-110 hover:-translate-y-[1px] hover:border-b-[6px] active:border-b-[2px] active:brightness-90 active:translate-y-[2px]"
+                    onClick={() => handleCloseTicket(ticket._id)}
+                >
+                    Fermer le Ticket
                 </button>
             </td>
         </tr>

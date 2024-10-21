@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from '../navbar';
-import { getPriorityColor} from '../../utils/ticketUtils'; // Import the utility functions
+import { getPriorityColor } from '../../utils/ticketUtils'; // Import the utility functions
 import TicketTable from './TicketTable';
 import EditTicketForm from './EditTicketForm';
 import Tooltip from './Tooltip';
@@ -247,6 +247,25 @@ const ViewTickets = () => {
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     };
 
+    async function handleCloseTicket(ticketId) {
+        try {
+            const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}/close`, {
+                method: 'POST',
+            });
+    
+            if (!response.ok) {
+                throw new Error(`Erreur lors de la clôture du ticket: ${response.statusText}`);
+            }
+    
+            const data = await response.json();
+            console.log('Ticket fermé avec succès:', data);
+    
+        } catch (error) {
+            console.error('Erreur de clôture du ticket:', error); // Afficher l'erreur complète dans la console
+            alert('Une erreur est survenue lors de la fermeture du ticket. Veuillez réessayer.');
+        }
+    }
+
     if (loading) {
         return <p className="text-center">Chargement des tickets...</p>;
     }
@@ -259,19 +278,14 @@ const ViewTickets = () => {
         <div>
             <Navbar />
             <h1 className="text-2xl font-bold mb-4">Gestion des Tickets</h1>
-            {editingTicket && (
-                <EditTicketForm
-                    editingTicket={editingTicket}
-                    setEditingTicket={setEditingTicket}
-                    handleUpdateTicket={handleUpdateTicket}
-                />
-            )}
+
             <TicketTable
                 tickets={tickets}
                 collaborateurs={collaborateurs}
                 getPriorityColor={getPriorityColor}
                 handleEdit={handleEdit}
                 handleDelete={handleDelete}
+                handleCloseTicket={handleCloseTicket}
                 tooltip={tooltip}
                 handleMouseOver={handleMouseOver}
                 handleMouseOut={handleMouseOut}
@@ -284,6 +298,14 @@ const ViewTickets = () => {
                 popupMessage={popupMessage}
                 handleClose={handleClosePopup}
             />
+
+            {editingTicket && (
+                <EditTicketForm
+                    editingTicket={editingTicket}
+                    setEditingTicket={setEditingTicket}
+                    handleUpdateTicket={handleUpdateTicket}
+                />
+            )}
         </div>
     );
 };

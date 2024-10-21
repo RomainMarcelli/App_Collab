@@ -1,7 +1,7 @@
 import React from 'react';
 import TicketRow from './TicketRow';
 
-const TicketTable = ({ tickets, collaborateurs, getPriorityColor, handleEdit, handleDelete, tooltip, handleMouseOver, handleMouseOut, formatTime, timers }) => {
+const TicketTable = ({ tickets, collaborateurs, getPriorityColor, handleEdit, handleDelete, tooltip, handleMouseOver, handleMouseOut, formatTime, timers, handleCloseTicket }) => {
     return (
         <div className="overflow-x-auto">
             <table className="min-w-full bg-white border border-gray-200 table-auto">
@@ -28,6 +28,7 @@ const TicketTable = ({ tickets, collaborateurs, getPriorityColor, handleEdit, ha
                             getPriorityColor={getPriorityColor}
                             handleEdit={handleEdit}
                             handleDelete={handleDelete}
+                            handleCloseTicket={handleCloseTicket}
                             tooltip={tooltip}
                             handleMouseOver={handleMouseOver}
                             handleMouseOut={handleMouseOut}
