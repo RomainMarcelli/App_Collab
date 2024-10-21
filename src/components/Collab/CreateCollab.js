@@ -1,7 +1,7 @@
 // src/components/CreateCollab.js
 
 import React, { useState } from 'react';
-import Navbar from './navbar';
+import Navbar from '../navbar';
 
 const CreateCollab = () => {
     const [nom, setNom] = useState('');

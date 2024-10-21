@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import Navbar from './navbar';
+import Navbar from '../navbar';
 
 const CollaborateursList = () => {
     const [collaborateurs, setCollaborateurs] = useState([]);

@@ -1,11 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import CreateTicketForm from './components/CreateTicketForm';
-import ViewTickets from './components/ViewTickets';
-import CreateCollab from './components/CreateCollab';
-import CollaborateursList from './components/CollaborateursList';
-import AffecterTickets from './components/AffecterTickets';
-import ViewName from './components/viewName';
+import CreateTicketForm from './components/Tickets/CreateTicketForm';
+import ViewTickets from './components/Tickets/ViewTickets';
+import CreateCollab from './components/Collab/CreateCollab';
+import CollaborateursList from './components/Collab/CollaborateursList';
+import AffecterTickets from './components/Tickets/AffecterTickets';
+import ViewName from './components/Collab/viewName';
 
 
 const App = () => {

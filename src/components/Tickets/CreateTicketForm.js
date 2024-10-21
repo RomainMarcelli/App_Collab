@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom'; // Ajoutez cette ligne
-import Navbar from './navbar'; // Assurez-vous que le chemin est correct
+import Navbar from '../navbar'; // Assurez-vous que le chemin est correct
 
 const CreateTicketForm = () => {
     const [formData, setFormData] = useState({
