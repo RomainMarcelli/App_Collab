@@ -6,6 +6,7 @@ import CreateCollab from './components/Collab/CreateCollab';
 import CollaborateursList from './components/Collab/CollaborateursList';
 import AffecterTickets from './components/Tickets/AffecterTickets';
 import ViewName from './components/Collab/viewName';
+import ListTicketClose from './components/Tickets/ListTicketClose';
 
 
 const App = () => {
@@ -19,6 +20,7 @@ const App = () => {
                     <Route path="/view-collab" element={<CollaborateursList />} />
                     <Route path="/affecter-ticket" element={<AffecterTickets />} />
                     <Route path="/view-name" element={<ViewName />} />
+                    <Route path="/ticket-close" element={<ListTicketClose />} />
                     {/* Route par défaut */}
                     <Route exact path="/" element={<CreateTicketForm />} />
                 </Routes>

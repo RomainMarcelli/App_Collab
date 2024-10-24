@@ -62,20 +62,6 @@ router.put('/tickets/:id', async (req, res) => {
     }
 });
 
-// Route pour supprimer un ticket
-router.delete('/tickets/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        const ticket = await Ticket.findByIdAndDelete(id);
-        if (!ticket) {
-            return res.status(404).send({ message: "Ticket non trouvé" });
-        }
-        res.send({ message: "Ticket supprimé avec succès" });
-    } catch (error) {
-        res.status(500).send({ message: "Erreur lors de la suppression du ticket" });
-    }
-});
-
 // Route pour fermer un ticket
 router.post('/tickets/:ticketId/close', async (req, res) => {
     try {
@@ -96,23 +82,27 @@ router.post('/tickets/:ticketId/close', async (req, res) => {
         await closedTicket.save();
         await Ticket.findByIdAndDelete(req.params.ticketId);
 
-        res.send({ message: 'Ticket fermé avec succès et déplacé dans la collection des tickets fermés' });
+        res.json({ message: 'Ticket fermé avec succès et déplacé dans la collection des tickets fermés' });
     } catch (error) {
         console.error('Erreur lors de la clôture du ticket:', error);
         res.status(500).send('Erreur lors de la clôture du ticket');
     }
 });
 
-// Route pour récupérer les tickets fermés
-router.get('/closed-tickets', async (req, res) => {
+// Route pour supprimer un ticket
+router.delete('/tickets/:id', async (req, res) => {
+    const { id } = req.params;
     try {
-        const closedTickets = await ClosedTicket.find();
-        res.send(closedTickets);
+        const ticket = await Ticket.findByIdAndDelete(id);
+        if (!ticket) {
+            return res.status(404).send({ message: "Ticket non trouvé" });
+        }
+        res.send({ message: "Ticket supprimé avec succès" });
     } catch (error) {
-        console.error('Erreur lors de la récupération des tickets fermés:', error);
-        res.status(500).send('Erreur lors de la récupération des tickets fermés');
+        res.status(500).send({ message: "Erreur lors de la suppression du ticket" });
     }
 });
+
 
 // Route pour affecter un collaborateur à un ticket
 router.put('/tickets/:id/affecter', async (req, res) => {
