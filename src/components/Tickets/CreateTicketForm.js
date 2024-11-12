@@ -17,19 +17,29 @@ const CreateTicketForm = () => {
             ...formData,
             [e.target.name]: e.target.value,
         });
+        console.log("Valeur de dateEmission :", e.target.name === 'dateEmission' ? e.target.value : formData.dateEmission);
     };
+    
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // Affiche le formData dans la console pour déboguer
+        console.log("Form Data avant soumission:", formData);
+    
+        const updatedFormData = {
+            ...formData,
+        };
+    
         try {
             const response = await fetch('http://localhost:3000/api/tickets', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(updatedFormData), // Utiliser les données mises à jour
             });
-
+    
             const data = await response.json();
             if (response.ok) {
                 alert('Ticket créé avec succès');
@@ -47,9 +57,12 @@ const CreateTicketForm = () => {
             }
         } catch (error) {
             console.error('Erreur réseau :', error);
-            alert('Erreur réseau : ' + error.message);
+            alert('Erreur réseau lors de la création du ticket.');
         }
     };
+    
+
+
 
     // Couleurs des priorités
     const priorityColors = {
@@ -71,17 +84,17 @@ const CreateTicketForm = () => {
     return (
         <>
             <Navbar />
-                {/* Bouton pour naviguer vers CreateCollab */}
-                <div className="flex justify-end mt-4 mr-10 absolute right-1">
-                    <Link to="/create-Collab">
-                        <button className="bg-indigo-500 text-white px-4 py-2 rounded-md hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            Ajouter Collaborateur
-                        </button>
-                    </Link>
-                </div>
+            {/* Bouton pour naviguer vers CreateCollab */}
+            <div className="flex justify-end mt-4 mr-10 absolute right-1">
+                <Link to="/create-Collab">
+                    <button className="bg-indigo-500 text-white px-4 py-2 rounded-md hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        Ajouter Collaborateur
+                    </button>
+                </Link>
+            </div>
             <div className="max-w-md mx-auto bg-white p-8 shadow-md rounded-lg">
                 <h2 className="text-2xl font-bold mb-6 text-center">Créer un Ticket</h2>
-                
+
 
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">

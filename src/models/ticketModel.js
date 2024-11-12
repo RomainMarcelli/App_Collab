@@ -26,7 +26,7 @@ const ticketSchema = new mongoose.Schema({
     dateEmission: {
         type: Date,
         required: true,
-        default: Date.now
+        // default: Date.now
     },
     collaborateur: {
         type: mongoose.Schema.Types.ObjectId,

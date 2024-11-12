@@ -49,7 +49,6 @@ const ViewTickets = () => {
         dateEmission: '',
     });
 
-    // Mise à jour des timers
     const updateTimers = () => {
         setTimers(prevTimers => {
             const newTimers = { ...prevTimers };
@@ -70,6 +69,7 @@ const ViewTickets = () => {
             return newTimers;
         });
     };
+
 
     const fetchCollaborateurs = async () => {
         try {
@@ -103,6 +103,32 @@ const ViewTickets = () => {
             }
         });
     };
+
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        // Vérifie si la date est valide
+        if (isNaN(date.getTime())) {
+            return "Date invalide"; // ou un message approprié
+        }
+        // Formatage
+        const options = {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        };
+        return date.toLocaleString('fr-FR', options);
+    };
+    
+    // Utilisation dans ton affichage
+    console.log('Date d\'émission :', formatDate(formData.dateEmission));
+    
+    
+    // Utilise cette fonction lors de l'affichage
+    console.log('Date d\'émission :', formatDate(formData.dateEmission));
+    
 
     const handleClosePopup = () => {
         console.log("Message popup:", popupMessage);
@@ -252,14 +278,14 @@ const ViewTickets = () => {
             const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}/close`, {
                 method: 'POST',
             });
-    
+
             if (!response.ok) {
                 throw new Error(`Erreur lors de la clôture du ticket: ${response.statusText}`);
             }
-    
+
             const data = await response.json();
             console.log('Ticket fermé avec succès:', data);
-    
+
         } catch (error) {
             console.error('Erreur de clôture du ticket:', error); // Afficher l'erreur complète dans la console
             alert('Une erreur est survenue lors de la fermeture du ticket. Veuillez réessayer.');

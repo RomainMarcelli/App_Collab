@@ -2,12 +2,12 @@ import React from 'react';
 import { getPriorityColor, formatSlaDuration } from '../../utils/ticketUtils';
 
 const TicketRow = ({ ticket, collaborateurs, getPriorityColor, handleEdit, handleDelete, tooltip, handleMouseOver, handleMouseOut, formatTime, timers, handleCloseTicket }) => {
-    
+
     const slaDurations = {
         1: 1 * 60 * 60 * 1000,
         2: 2 * 60 * 60 * 1000,
         3: 8 * 60 * 60 * 1000,
-        4: 2 * 24 * 60 * 60 * 1000,
+        4: 3 * 24 * 60 * 60 * 1000,
         5: 5 * 24 * 60 * 60 * 1000,
     };
 
@@ -29,12 +29,16 @@ const TicketRow = ({ ticket, collaborateurs, getPriorityColor, handleEdit, handl
                 {ticket.description}
             </td>
             <td className="px-4 py-4 border text-center">{ticket.beneficiaire}</td>
-            <td className="px-4 py-4 border text-center">{new Date(ticket.dateEmission).toLocaleDateString()}</td>
+            <td className="px-4 py-4 border text-center">
+                {ticket.dateEmission
+                    ? `${ticket.dateEmission.substring(8, 10)}/${ticket.dateEmission.substring(5, 7)}/${ticket.dateEmission.substring(0, 4)} ${ticket.dateEmission.substring(11, 16)}`
+                    : 'Date non disponible'}
+            </td>
             <td className="px-4 py-4 border text-center">
                 {formatSlaDuration(slaDurations[ticket.priorite])}
             </td>
             <td className="px-4 py-4 border text-center">
-                {timers[ticket._id] !== undefined ? formatTime(timers[ticket._id]) : 'En attente'}
+                {timers[ticket._id] !== undefined ? formatTime(timers[ticket._id]) : 'Calcul en cours...'}
             </td>
             <td className="px-4 py-4 border text-center flex flex-col items-center">
                 <button
