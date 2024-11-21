@@ -1,15 +1,44 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { getPriorityColor, formatSlaDuration } from '../../utils/ticketUtils';
 
-const TicketRow = ({ ticket, collaborateurs, getPriorityColor, handleEdit, handleDelete, tooltip, handleMouseOver, handleMouseOut, formatTime, timers, handleCloseTicket }) => {
+const slaDurations = {
+    1: 30 * 60 * 1000, // 30 minutes
+    2: 1 * 60 * 60 * 1000, // 1 heure
+    3: 4 * 60 * 60 * 1000, // 4 heures
+    4: 35 * 60 * 60 * 1000, // 35 heures
+    5: 72 * 60 * 60 * 1000, // 72 heures
+};
 
-    const slaDurations = {
-        1: 1 * 60 * 60 * 1000,
-        2: 2 * 60 * 60 * 1000,
-        3: 8 * 60 * 60 * 1000,
-        4: 3 * 24 * 60 * 60 * 1000,
-        5: 5 * 24 * 60 * 60 * 1000,
-    };
+const formatTime = (milliseconds) => {
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+};
+
+const TicketRow = ({ ticket, collaborateurs, getPriorityColor, handleEdit, handleDelete, tooltip, handleMouseOver, handleMouseOut, handleCloseTicket }) => {
+
+    const [tickets, setTickets] = useState([]);
+    const [timers, setTimers] = useState({});
+
+    useEffect(() => {
+        // Calculer le temps restant pour chaque ticket
+        const interval = setInterval(() => {
+            const updatedTimers = {};
+            tickets.forEach((ticket) => {
+                const emissionTime = new Date(ticket.dateEmission).getTime();
+                const slaDuration = slaDurations[ticket.priorite];
+                const currentTime = Date.now();
+                const remainingTime = slaDuration - (currentTime - emissionTime);
+
+                updatedTimers[ticket._id] = remainingTime > 0 ? remainingTime : 0;
+            });
+            setTimers(updatedTimers);
+        }, 1000);
+
+        return () => clearInterval(interval); // Nettoyer l'intervalle
+    }, [tickets]);
 
     return (
         <tr key={ticket._id} className="hover:bg-gray-50 mb-10">
@@ -30,15 +59,16 @@ const TicketRow = ({ ticket, collaborateurs, getPriorityColor, handleEdit, handl
             </td>
             <td className="px-4 py-4 border text-center">{ticket.beneficiaire}</td>
             <td className="px-4 py-4 border text-center">
-                {ticket.dateEmission
-                    ? `${ticket.dateEmission.substring(8, 10)}/${ticket.dateEmission.substring(5, 7)}/${ticket.dateEmission.substring(0, 4)} ${ticket.dateEmission.substring(11, 16)}`
-                    : 'Date non disponible'}
+                {new Date(ticket.dateEmission).toLocaleString()}
             </td>
             <td className="px-4 py-4 border text-center">
                 {formatSlaDuration(slaDurations[ticket.priorite])}
             </td>
             <td className="px-4 py-4 border text-center">
-                {timers[ticket._id] !== undefined ? formatTime(timers[ticket._id]) : 'Calcul en cours...'}
+                {' '}
+                {timers[ticket._id] !== undefined
+                    ? formatTime(timers[ticket._id])
+                    : 'Calcul en cours...'}
             </td>
             <td className="px-4 py-4 border text-center flex flex-col items-center">
                 <button

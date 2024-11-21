@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import Navbar from '../navbar'; // Assurez-vous que le chemin est correct
+import { Link } from 'react-router-dom';
+import Navbar from '../navbar';
+import { createTicket } from '../../services/ticketService';  // Assurez-vous que ce chemin est correct
 
 const CreateTicketForm = () => {
     const [formData, setFormData] = useState({
@@ -8,10 +10,10 @@ const CreateTicketForm = () => {
         sujet: '',
         description: '',
         beneficiaire: '',
-        dateEmission: '', // Définit la date avec une chaîne vide par défaut
+        dateEmission: '',
     });
 
-    const [isPopupVisible, setIsPopupVisible] = useState(false);
+    const [ticketCreated, setTicketCreated] = useState(false);
 
     const handleChange = (e) => {
         setFormData({
@@ -22,69 +24,58 @@ const CreateTicketForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-    
+
+        // Créer un objet Date à partir de la valeur du champ "dateEmission"
+        const dateTime = new Date(formData.dateEmission);
+
+        // Vérifier si la date est valide
+        if (isNaN(dateTime.getTime())) {
+            alert('Veuillez entrer une date et une heure valides.');
+            return;
+        }
+
+        // Créer un numéro de ticket unique (par exemple, basé sur le timestamp)
+        const numeroTicket = `TICKET-${Date.now()}`;
+
+        const newTicket = {
+            numeroTicket: numeroTicket,
+            priorite: formData.priorite,
+            sujet: formData.sujet,
+            description: formData.description,
+            beneficiaire: formData.beneficiaire,
+            dateEmission: dateTime.toISOString(),
+        };
+
         try {
-            // Vérifiez si la date est bien définie
-            if (!formData.dateEmission) {
-                throw new Error('Veuillez sélectionner une date valide.');
-            }
-    
-            // Convertir la date en objet Date (sans toISOString pour conserver le fuseau local)
-            const parsedDate = new Date(formData.dateEmission);
-    
-            // Vérifiez si la date est valide
-            if (isNaN(parsedDate.getTime())) {
-                throw new Error('La date fournie est invalide.');
-            }
-    
-            // Formate la date en ISO string pour l'envoi au backend
-            const dateEmission = parsedDate.toISOString();
-    
-            const dataToSend = { ...formData, dateEmission };
-    
-            console.log('Données à envoyer :', dataToSend);
-    
-            const response = await fetch('http://localhost:3000/api/tickets', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(dataToSend),
+            // Appel à la fonction createTicket de ticketService
+            const response = await createTicket(newTicket);
+
+            // Si le ticket est créé avec succès, on met à jour l'état
+            setTicketCreated(true);
+            setFormData({
+                numeroTicket: '',
+                priorite: '1',
+                sujet: '',
+                description: '',
+                beneficiaire: '',
+                dateEmission: '',
             });
-    
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.message || 'Erreur lors de la création du ticket');
-            }
-    
-            console.log('Ticket créé avec succès', data);
-    
-            // Affiche la popup
-            setIsPopupVisible(true);
-    
-            // Réinitialise le formulaire après un délai
-            setTimeout(() => {
-                setIsPopupVisible(false);
-                setFormData({
-                    numeroTicket: '',
-                    priorite: '1',
-                    sujet: '',
-                    description: '',
-                    beneficiaire: '',
-                    dateEmission: '',
-                });
-            }, 3000); // Cache la popup après 3 secondes
         } catch (error) {
-            console.error('Erreur lors de la création du ticket:', error.message);
-            alert(error.message); // Montre l'erreur à l'utilisateur
+            alert(`Erreur : ${error.message}`);
         }
     };
-    
 
     return (
         <>
             <Navbar />
-            <div className="max-w-md mx-auto bg-white p-8 shadow-md rounded-lg relative">
+            <div className="flex justify-end mt-4 mr-10 absolute right-1">
+                <Link to="/create-Collab">
+                    <button className="bg-indigo-500 text-white px-4 py-2 rounded-md hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        Ajouter Collaborateur
+                    </button>
+                </Link>
+            </div>
+            <div className="max-w-md mx-auto bg-white p-8 shadow-md rounded-lg">
                 <h2 className="text-2xl font-bold mb-6 text-center">Créer un Ticket</h2>
 
                 <form onSubmit={handleSubmit}>
@@ -158,7 +149,7 @@ const CreateTicketForm = () => {
                         <input
                             type="datetime-local"
                             name="dateEmission"
-                            value={formData.dateEmission || ""}
+                            value={formData.dateEmission}
                             onChange={handleChange}
                             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             required
@@ -174,12 +165,6 @@ const CreateTicketForm = () => {
                         </button>
                     </div>
                 </form>
-
-                {isPopupVisible && (
-                    <div className="absolute top-0 left-0 right-0 bg-green-500 text-white text-center p-4 rounded-md shadow-md">
-                        Ticket créé avec succès !
-                    </div>
-                )}
             </div>
         </>
     );

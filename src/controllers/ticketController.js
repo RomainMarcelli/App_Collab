@@ -13,28 +13,49 @@ exports.getAllTickets = async (req, res) => {
 
 // Ajouter un ticket
 exports.addTicket = async (req, res) => {
-    const { numeroTicket, priorite, sujet, beneficiaire, description } = req.body;
-
-    if (!numeroTicket || !priorite || !sujet || !beneficiaire || !description) {
-        return res.status(400).json({ message: 'Tous les champs sont requis' });
-    }
-
     try {
+        const { numeroTicket, priorite, sujet, beneficiaire, description, dateEmission } = req.body;
+
+        console.log('Données reçues du frontend :', req.body); // Log des données reçues pour le débogage
+
+        // Vérification des champs requis
+        if (!numeroTicket || !priorite || !sujet || !beneficiaire || !description || !dateEmission) {
+            return res.status(400).json({ message: 'Tous les champs sont requis' });
+        }
+
+        // Conversion sécurisée de la date
+        const parsedDate = new Date(dateEmission); // Convertit la chaîne en objet Date
+        if (isNaN(parsedDate.getTime())) {
+            return res.status(400).json({ message: 'La date fournie est invalide.' });
+        }
+
+        // Création du ticket avec les données reçues
         const newTicket = new Ticket({
             numeroTicket,
             priorite,
             sujet,
             beneficiaire,
             description,
-            dateEmission: new Date(),
+            dateEmission: parsedDate, // Stocke la date telle quelle (UTC si déjà convertie en amont)
         });
 
+        // Sauvegarde dans la base de données
         await newTicket.save();
-        res.status(201).json({ message: 'Ticket ajouté avec succès' });
+
+        // Retourne une réponse avec un message de succès et les données du ticket créé
+        return res.status(201).json({
+            message: 'Ticket ajouté avec succès',
+            ticket: newTicket,
+        });
     } catch (error) {
-        res.status(500).json({ message: 'Erreur lors de l\'ajout du ticket', error });
+        console.error('Erreur lors de l\'ajout du ticket:', error); // Log de l'erreur pour le serveur
+        return res.status(500).json({ message: 'Erreur lors de l\'ajout du ticket', error });
     }
 };
+
+
+
+
 
 // Mettre à jour un ticket
 exports.updateTicket = async (req, res) => {

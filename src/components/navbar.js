@@ -13,6 +13,9 @@ const Navbar = () => {
                     <Link to="/view-collab" className="text-gray-300 hover:text-white mx-4">Liste des Collab</Link>
                     <Link to="/affecter-ticket" className="text-gray-300 hover:text-white mx-4">Affecter un ticket</Link>
                     <Link to="/ticket-close" className="text-gray-300 hover:text-white mx-4">Liste ticket close</Link>
+                    {/* <Link to="/ticket-view" className="text-gray-300 hover:text-white mx-4">TEST PAGE</Link>
+                    <Link to="/ticket-page" className="text-gray-300 hover:text-white mx-4">SEcond test PAGE</Link>
+                    <Link to="/timer-view" className="text-gray-300 hover:text-white mx-4">Timer</Link> */}
                 </div>
             </div>
         </nav>
