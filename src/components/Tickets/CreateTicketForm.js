@@ -22,28 +22,28 @@ const CreateTicketForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-    
+
         try {
             // Vérifiez si la date est bien définie
             if (!formData.dateEmission) {
                 throw new Error('Veuillez sélectionner une date valide.');
             }
-    
+
             // Convertir la date en objet Date (sans toISOString pour conserver le fuseau local)
             const parsedDate = new Date(formData.dateEmission);
-    
+
             // Vérifiez si la date est valide
             if (isNaN(parsedDate.getTime())) {
                 throw new Error('La date fournie est invalide.');
             }
-    
+
             // Formate la date en ISO string pour l'envoi au backend
             const dateEmission = parsedDate.toISOString();
-    
+
             const dataToSend = { ...formData, dateEmission };
-    
+
             console.log('Données à envoyer :', dataToSend);
-    
+
             const response = await fetch('http://localhost:3000/api/tickets', {
                 method: 'POST',
                 headers: {
@@ -51,35 +51,36 @@ const CreateTicketForm = () => {
                 },
                 body: JSON.stringify(dataToSend),
             });
-    
+
             const data = await response.json();
             if (!response.ok) {
                 throw new Error(data.message || 'Erreur lors de la création du ticket');
             }
-    
+
             console.log('Ticket créé avec succès', data);
-    
+
+            // Réinitialise le formulaire immédiatement après succès
+            setFormData({
+                numeroTicket: '',
+                priorite: '1',
+                sujet: '',
+                description: '',
+                beneficiaire: '',
+                dateEmission: '',
+            });
+
             // Affiche la popup
             setIsPopupVisible(true);
-    
-            // Réinitialise le formulaire après un délai
+
+            // Cache la popup après un délai
             setTimeout(() => {
                 setIsPopupVisible(false);
-                setFormData({
-                    numeroTicket: '',
-                    priorite: '1',
-                    sujet: '',
-                    description: '',
-                    beneficiaire: '',
-                    dateEmission: '',
-                });
             }, 3000); // Cache la popup après 3 secondes
         } catch (error) {
             console.error('Erreur lors de la création du ticket:', error.message);
             alert(error.message); // Montre l'erreur à l'utilisateur
         }
     };
-    
 
     return (
         <>
