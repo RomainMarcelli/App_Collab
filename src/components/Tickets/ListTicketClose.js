@@ -23,17 +23,31 @@ const ListTicketClose = () => {
         try {
             console.log('ID du ticket à supprimer:', ticketId);  // Affiche l'ID pour vérification
             await axios.delete(`http://localhost:3000/api/closed-tickets/${ticketId}`);
-            
+
             // Met à jour l'état après la suppression
             setClosedTickets(prevTickets => prevTickets.filter(ticket => ticket._id !== ticketId));
-    
+
             alert('Ticket fermé supprimé avec succès');
         } catch (error) {
             console.error('Erreur lors de la suppression du ticket fermé:', error.response ? error.response.data : error.message);
             alert('Erreur lors de la suppression du ticket fermé');
         }
     };
+    const handleReopenTicket = async (ticketId) => {
+        try {
+            console.log('ID du ticket à rouvrir:', ticketId);
+            await axios.post(`http://localhost:3000/api/closed-tickets/${ticketId}/reopen`);
+            // Mettre à jour l'état local pour retirer le ticket rouvert de la liste fermée
+            setClosedTickets((prevTickets) => prevTickets.filter((ticket) => ticket._id !== ticketId));
+            alert('Ticket rouvert avec succès');
+        } catch (error) {
+            console.error('Erreur lors de la réouverture du ticket fermé:', error.response ? error.response.data : error.message);
+            alert('Erreur lors de la réouverture du ticket fermé');
+        }
+    };
     
+
+
     return (
         <>
             <Navbar />
@@ -69,6 +83,12 @@ const ListTicketClose = () => {
                                             onClick={() => handleDeleteTicket(ticket._id)}
                                         >
                                             Supprimer
+                                        </button>
+                                        <button
+                                            className="bg-blue-500 text-white px-4 py-2 rounded"
+                                            onClick={() => handleReopenTicket(ticket._id)}
+                                        >
+                                            Rouvrir
                                         </button>
                                     </td>
                                 </tr>

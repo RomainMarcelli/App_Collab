@@ -98,7 +98,7 @@ const AffecterTickets = () => {
                                     <td className="border px-4 py-2">{ticket._id}</td>
                                     <td className="border px-4 py-2">{ticket.sujet}</td>
                                     <td className="border px-4 py-2">{ticket.description}</td>
-                                    <td className="border px-4 py-2">
+                                    <td className="border px-4 py-2  flex flex-col items-center">
                                         <select
                                             className="border rounded p-1"
                                             onChange={(e) => handleSelectCollaborateur(ticket._id, e.target.value)}

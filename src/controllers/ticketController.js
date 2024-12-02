@@ -3,13 +3,31 @@ const Ticket = require('../models/ticketModel'); // Assurez-vous d'importer le m
 const ClosedTicket = require('../models/ClosedTicket'); // Modèle pour les tickets fermés
 
 exports.getAllTickets = async (req, res) => {
+    const { status } = req.query;
+
     try {
-        const tickets = await Ticket.find();
-        res.json(tickets);
+        const query = status ? { status } : {};
+        const tickets = await Ticket.find(query);
+        res.status(200).json(tickets);
     } catch (error) {
-        res.status(500).json({ message: 'Erreur lors de la récupération des tickets', error });
+        console.error('Erreur lors de la récupération des tickets :', error);
+        res.status(500).json({ message: 'Erreur lors de la récupération des tickets' });
     }
 };
+
+// const getTickets = async (req, res) => {
+//     const { status } = req.query;
+
+//     try {
+//         const query = status ? { status } : {};
+//         const tickets = await Ticket.find(query);
+//         res.status(200).json(tickets);
+//     } catch (error) {
+//         console.error('Erreur lors de la récupération des tickets :', error);
+//         res.status(500).json({ message: 'Erreur lors de la récupération des tickets' });
+//     }
+// };
+
 
 // Ajouter un ticket
 exports.addTicket = async (req, res) => {
@@ -185,9 +203,8 @@ exports.affecterTicket = async (req, res) => {
 };
 
 
-// Contrôleur pour fermer un ticket
 exports.closeTicket = async (req, res) => {
-    const { ticketId } = req.params; // Récupération de l'ID du ticket depuis les paramètres
+    const { ticketId } = req.params;
 
     try {
         // Trouver le ticket à fermer
@@ -204,17 +221,16 @@ exports.closeTicket = async (req, res) => {
             description: ticket.description,
             beneficiaire: ticket.beneficiaire,
             dateEmission: ticket.dateEmission,
-            dateFermeture: new Date(), // Ajoute la date de fermeture
+            dateFermeture: new Date(),
         });
 
         // Sauvegarder le ticket fermé dans ClosedTicket
         await closedTicket.save();
 
-        // Marquer le ticket comme fermé
-        ticket.status = 'closed';
-        await ticket.save();
+        // Supprimer le ticket de la collection Ticket
+        await Ticket.findByIdAndDelete(ticketId);
 
-        return res.status(200).json({ message: 'Ticket fermé avec succès' });
+        return res.status(200).json({ message: 'Ticket fermé avec succès et déplacé dans la collection des tickets fermés' });
     } catch (error) {
         console.error('Erreur lors de la clôture du ticket:', error);
         return res.status(500).json({ message: 'Erreur lors de la clôture du ticket' });

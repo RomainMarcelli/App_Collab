@@ -1,27 +1,165 @@
 import React, { useState, useEffect } from 'react';
-import Navbar from '../navbar'; // Assurez-vous que le chemin est correct
+import Navbar from '../navbar';
+import { getPriorityColor, formatSlaDuration } from '../../utils/ticketUtils';
+
+// Composant pour modifier un ticket
+const EditTicketForm = ({ editingTicket, setEditingTicket, handleUpdateTicket, collaborateurs = [] }) => {
+    const handleChange = (e) => {
+        console.log("Changing field:", e.target.name, "to:", e.target.value); // Log le champ et sa nouvelle valeur
+
+        setEditingTicket({
+            ...editingTicket,
+            [e.target.name]: e.target.value,
+        });
+
+        console.log("Updated editingTicket:", {
+            ...editingTicket,
+            [e.target.name]: e.target.value,
+        });
+    };
+
+
+    return (
+        <div className="bg-gray-100 p-4 rounded-md shadow-md mt-6">
+            <h3 className="text-lg font-bold mb-4">Modifier le Ticket</h3>
+
+            <div className="mb-4">
+                <label className="block text-gray-700">Numéro du Ticket</label>
+                <input
+                    type="text"
+                    name="numeroTicket"
+                    value={editingTicket?.numeroTicket || ''}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+            </div>
+
+            <div className="mb-4">
+                <label className="block text-gray-700">Priorité</label>
+                <select
+                    name="priorite"
+                    value={editingTicket?.priorite || ''}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                    <option value="1">1 (Urgent)</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                </select>
+            </div>
+            <div className="mb-4">
+                <label className="block text-gray-700">Sujet</label>
+                <input
+                    type="text"
+                    name="sujet"
+                    value={editingTicket?.sujet || ''}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+            </div>
+
+            <div className="mb-4">
+                <label className="block text-gray-700">Description</label>
+                <textarea
+                    name="description"
+                    value={editingTicket?.description || ''}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    rows="4"
+                ></textarea>
+            </div>
+
+            <div className="mb-4">
+                <label className="block text-gray-700">Bénéficiaire</label>
+                <input
+                    type="text"
+                    name="beneficiaire"
+                    value={editingTicket?.beneficiaire || ''}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+            </div>
+
+            <div className="mb-4">
+                <label className="block text-gray-700">Date et Heure d'émission</label>
+                <input
+                    type="datetime-local"
+                    name="dateEmission"
+                    value={editingTicket?.dateEmission || ''} // Valeur actuelle de dateEmission
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+
+            </div>
+
+
+            <div className="flex justify-end">
+                <button
+                    onClick={handleUpdateTicket}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 mr-2"
+                >
+                    Sauvegarder
+                </button>
+                <button
+                    onClick={() => setEditingTicket(null)}
+                    className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none"
+                >
+                    Annuler
+                </button>
+            </div>
+        </div>
+    );
+};
+
+
+
 
 const ViewTicket = () => {
     const [tickets, setTickets] = useState([]);
-    const [timers, setTimers] = useState({}); // Garde une trace des timers pour chaque ticket
+    const [collaborateurs, setCollaborateurs] = useState([]);
+    const [timers, setTimers] = useState({});
+    const [editingTicket, setEditingTicket] = useState(null);
+    const [popupMessage, setPopupMessage] = useState(null);
+
+    const slaDurations = {
+        1: 30 * 60 * 1000, // 30 minutes
+        2: 1 * 60 * 60 * 1000, // 1 heure
+        3: 8 * 60 * 60 * 1000, // 4 heures
+        4: 48 * 60 * 60 * 1000, // 35 heures
+        5: 72 * 60 * 60 * 1000, // 72 heures
+    };
 
     const fetchTickets = async () => {
         try {
             const response = await fetch('http://localhost:3000/api/tickets');
             const data = await response.json();
             if (response.ok) {
+                console.log("Fetched tickets:", data); // Vérifie les données après mise à jour
                 setTickets(data);
             } else {
-                console.log('Erreur côté serveur :', data);
                 alert('Erreur lors de la récupération des tickets : ' + data.message);
             }
         } catch (error) {
             console.error('Erreur réseau :', error);
-            alert('Erreur réseau : ' + error.message);
         }
     };
 
-    // Calculer le temps restant en fonction de la priorité et de la date d'émission
+
+    const fetchCollaborateurs = async () => {
+        try {
+            const response = await fetch('http://localhost:3000/api/collaborateurs');
+            if (!response.ok) {
+                throw new Error('Erreur lors de la récupération des collaborateurs');
+            }
+            const data = await response.json();
+            setCollaborateurs(data);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
     const calculateRemainingTime = (priority, dateEmission) => {
         // Durées en fonction des priorités
         const priorityDurations = {
@@ -49,24 +187,24 @@ const ViewTicket = () => {
         });
         setTimers(newTimers);
 
-        // Mettre à jour les timers toutes les secondes
         const interval = setInterval(() => {
             setTimers((prevTimers) => {
                 const updatedTimers = { ...prevTimers };
                 for (const id in updatedTimers) {
                     if (updatedTimers[id] > 0) {
-                        updatedTimers[id] -= 1000; // Réduire 1 seconde
+                        updatedTimers[id] -= 1000;
                     }
                 }
                 return updatedTimers;
             });
         }, 1000);
 
-        return () => clearInterval(interval); // Nettoyer l'intervalle
+        return () => clearInterval(interval);
     };
 
     useEffect(() => {
         fetchTickets();
+        fetchCollaborateurs();
     }, []);
 
     useEffect(() => {
@@ -75,62 +213,130 @@ const ViewTicket = () => {
         }
     }, [tickets]);
 
-    // Formater une durée en hh:mm:ss
+    const handleDelete = async (ticketId) => {
+        const confirmed = window.confirm('Êtes-vous sûr de vouloir supprimer ce ticket ?');
+        if (confirmed) {
+            try {
+                const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}`, {
+                    method: 'DELETE',
+                });
+
+                if (response.ok) {
+                    fetchTickets();
+                } else {
+                    console.error('Erreur de suppression');
+                }
+            } catch (error) {
+                console.error('Erreur lors de la suppression :', error);
+            }
+        }
+    };
+
+    const handleEdit = (ticket) => {
+        if (editingTicket && editingTicket._id === ticket._id) {
+            // Si le formulaire est déjà ouvert pour ce ticket, le fermer
+            setEditingTicket(null);
+        } else {
+            // Sinon, ouvrir le formulaire pour ce ticket
+            setEditingTicket({
+                ...ticket,
+                dateEmission: ticket.dateEmission
+                    ? new Date(ticket.dateEmission).toISOString().slice(0, 16)
+                    : '',
+                collaborateur: ticket.collaborateur || '',
+            });
+        }
+    };
+
+
+
+
+    const handleUpdateTicket = async () => {
+        try {
+            const updatedTicket = {
+                ...editingTicket,
+                dateEmission: editingTicket.dateEmission
+                    ? new Date(editingTicket.dateEmission).toISOString()
+                    : null,
+                collaborateur: editingTicket.collaborateur || null,
+            };
+
+            console.log("Updating ticket with data:", updatedTicket);
+
+            const response = await fetch(`http://localhost:3000/api/tickets/${editingTicket._id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(updatedTicket),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log("Update successful, server response:", data);
+
+                setEditingTicket(null); // Réinitialise le formulaire d'édition
+                await fetchTickets(); // Rafraîchit la liste des tickets
+            } else {
+                const errorData = await response.json();
+                console.error("Update failed, server response:", errorData);
+            }
+        } catch (error) {
+            console.error("Error updating ticket:", error);
+        }
+    };
+
+
+
     const formatTime = (timeInMillis) => {
         const totalSeconds = Math.floor(timeInMillis / 1000);
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
         const seconds = totalSeconds % 60;
 
-        return `${hours.toString().padStart(2, '0')}h:${minutes
+        return `${hours.toString().padStart(2, '0')}h:${minutes.toString().padStart(2, '0')}m:${seconds
             .toString()
-            .padStart(2, '0')}m:${seconds.toString().padStart(2, '0')}s`;
-    };
-
-    const handleDelete = async (ticketId) => {
-        const confirmed = window.confirm("Êtes-vous sûr de vouloir supprimer ce ticket ?");
-        if (confirmed) {
-            await deleteTicket(ticketId);
-            fetchTickets();
-        }
-    };
-
-    const deleteTicket = async (ticketId) => {
-        try {
-            const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}`, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) {
-                const errorData = await response.text();
-                console.error('Erreur de suppression:', errorData);
-                return;
-            }
-
-            const data = await response.json();
-            console.log(data.message);
-        } catch (error) {
-            console.error('Erreur lors de la requête DELETE:', error);
-        }
+            .padStart(2, '0')}s`;
     };
 
     const formatDate = (dateString) => {
         const date = new Date(dateString);
-        console.log("Date reçue dans ViewTicket:", date);
-
-        // Utilise Intl.DateTimeFormat pour forcer le fuseau horaire et formater la date
-        const formatter = new Intl.DateTimeFormat('fr-FR', {
+        return date.toLocaleString('fr-FR', {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit',
             hour: '2-digit',
             minute: '2-digit',
-            second: '2-digit',
-            timeZone: 'Europe/Paris', // Assurez-vous d'indiquer le bon fuseau horaire
         });
-
-        return formatter.format(date);
     };
+
+
+    async function handleCloseTicket(ticketId) {
+        try {
+            const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}/close`, {
+                method: 'POST',
+            });
+
+            if (!response.ok) {
+                throw new Error(`Erreur lors de la clôture du ticket: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log('Ticket fermé avec succès:', data);
+
+            // Mettre à jour l'état local pour retirer le ticket fermé
+            setTickets((prevTickets) => prevTickets.filter((ticket) => ticket._id !== ticketId));
+
+            // Afficher la popup de succès
+            setPopupMessage('Le ticket a été fermé avec succès.');
+            setTimeout(() => setPopupMessage(null), 3000); // Masquer après 3 secondes
+        } catch (error) {
+            console.error('Erreur de clôture du ticket:', error);
+            alert('Une erreur est survenue lors de la fermeture du ticket. Veuillez réessayer.');
+        }
+    }
+
+
 
     return (
         <>
@@ -143,38 +349,61 @@ const ViewTicket = () => {
                             <table className="min-w-full bg-white border border-gray-200">
                                 <thead className="bg-gray-100">
                                     <tr>
-                                        <th className="py-2 px-4 border border-gray-300 text-center">Numéro du Ticket</th>
+                                        <th className="py-2 px-4 border border-gray-300 text-center">Numéro</th>
+                                        <th className="py-2 px-4 border border-gray-300 text-center">Collaborateur</th>
                                         <th className="py-2 px-4 border border-gray-300 text-center">Priorité</th>
                                         <th className="py-2 px-4 border border-gray-300 text-center">Sujet</th>
                                         <th className="py-2 px-4 border border-gray-300 text-center">Description</th>
                                         <th className="py-2 px-4 border border-gray-300 text-center">Bénéficiaire</th>
-                                        <th className="py-2 px-4 border border-gray-300 text-center">Date d'émission</th>
+                                        <th className="py-2 px-4 border border-gray-300 text-center">Date</th>
+                                        <th className="py-2 px-4 border border-gray-300 text-center">SLA</th>
                                         <th className="py-2 px-4 border border-gray-300 text-center">Temps restant</th>
-                                        <th className="py-2 px-4 border border-gray-300 text-center">Action</th>
+                                        <th className="py-2 px-4 border border-gray-300 text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {tickets.map((ticket) => (
                                         <tr key={ticket._id} className="hover:bg-gray-50">
                                             <td className="py-2 px-4 border border-gray-300 text-center">{ticket.numeroTicket}</td>
+                                            <td className="py-2 px-4 border border-gray-300 text-center">
+                                                {collaborateurs.find((collab) => collab._id === ticket.collaborateur)?.nom || 'Non attribué'}
+                                            </td>
                                             <td className="py-2 px-4 border border-gray-300 text-center">{ticket.priorite}</td>
                                             <td className="py-2 px-4 border border-gray-300 text-center">{ticket.sujet}</td>
                                             <td className="py-2 px-4 border border-gray-300 text-center">{ticket.description}</td>
                                             <td className="py-2 px-4 border border-gray-300 text-center">{ticket.beneficiaire}</td>
                                             <td className="py-2 px-4 border border-gray-300 text-center">{formatDate(ticket.dateEmission)}</td>
                                             <td className="py-2 px-4 border border-gray-300 text-center">
-                                                {timers[ticket._id] !== undefined
-                                                    ? formatTime(timers[ticket._id])
-                                                    : 'Calcul en cours...'}
+                                                {formatSlaDuration(slaDurations[ticket.priorite])}
                                             </td>
                                             <td className="py-2 px-4 border border-gray-300 text-center">
+                                                {timers[ticket._id] !== undefined ? formatTime(timers[ticket._id]) : 'Calcul en cours...'}
+                                            </td>
+                                            <td className="py-2 px-6 border border-gray-300 text-center flex flex-col items-center w-[250px]">
                                                 <button
+                                                    className={`cursor-pointer transition-all mb-2 ${editingTicket && editingTicket._id === ticket._id
+                                                        ? 'bg-blue-700'
+                                                        : 'bg-blue-500'
+                                                        } text-white px-6 py-2 rounded-lg border-blue-600 border-b-[4px] hover:brightness-110 hover:-translate-y-[1px] hover:border-b-[6px] active:border-b-[2px] active:brightness-90 active:translate-y-[2px]`}
+                                                    onClick={() => handleEdit(ticket)}
+                                                >
+                                                    {editingTicket && editingTicket._id === ticket._id ? 'Fermer' : 'Modifier'}
+                                                </button>
+
+                                                <button
+                                                    className="cursor-pointer transition-all bg-red-500 text-white px-6 py-2 rounded-lg border-red-600 border-b-[4px] hover:brightness-110 hover:-translate-y-[1px] hover:border-b-[6px] active:border-b-[2px] active:brightness-90 active:translate-y-[2px]"
                                                     onClick={() => handleDelete(ticket._id)}
-                                                    className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
                                                 >
                                                     Supprimer
                                                 </button>
+                                                <button
+                                                    className="cursor-pointer transition-all mt-2 bg-green-500 text-white px-6 py-2 rounded-lg border-green-600 border-b-[4px] hover:brightness-110 hover:-translate-y-[1px] hover:border-b-[6px] active:border-b-[2px] active:brightness-90 active:translate-y-[2px]"
+                                                    onClick={() => handleCloseTicket(ticket._id)}
+                                                >
+                                                    Fermer le Ticket
+                                                </button>
                                             </td>
+
                                         </tr>
                                     ))}
                                 </tbody>
@@ -183,6 +412,24 @@ const ViewTicket = () => {
                     ) : (
                         <p className="text-center">Aucun ticket disponible.</p>
                     )}
+
+                    {editingTicket && (
+                        <EditTicketForm
+                            editingTicket={editingTicket}
+                            setEditingTicket={setEditingTicket}
+                            handleUpdateTicket={handleUpdateTicket}
+                            collaborateurs={collaborateurs}
+                        />
+                    )}
+
+
+                    {popupMessage && (
+                        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+                            {popupMessage}
+                        </div>
+                    )}
+
+
                 </div>
             </div>
         </>
