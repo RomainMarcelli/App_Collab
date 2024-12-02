@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Navbar from '../navbar';
 import { getPriorityColor, formatSlaDuration } from '../../utils/ticketUtils';
 
@@ -122,6 +122,11 @@ const ViewTicket = () => {
     const [timers, setTimers] = useState({});
     const [editingTicket, setEditingTicket] = useState(null);
     const [popupMessage, setPopupMessage] = useState(null);
+    const [expiredTimerTickets, setExpiredTimerTickets] = useState([]); // État pour les tickets avec timers expirés
+    const [popupDisabled, setPopupDisabled] = useState(false); // État pour désactiver temporairement la popup
+    const popupTimerRef = useRef(null); // Référence pour stocker le timer
+
+
 
     const slaDurations = {
         1: 30 * 60 * 1000, // 30 minutes
@@ -181,10 +186,19 @@ const ViewTicket = () => {
 
     const startTimers = () => {
         const newTimers = {};
+        const expiredTickets = []; // Stocker les tickets avec timers expirés
+
         tickets.forEach((ticket) => {
             const remainingTime = calculateRemainingTime(ticket.priorite, ticket.dateEmission);
+
+            if (remainingTime === 0) {
+                expiredTickets.push(ticket); // Ajouter les tickets expirés
+            }
+
             newTimers[ticket._id] = remainingTime;
         });
+
+        setExpiredTimerTickets(expiredTickets); // Mettre à jour l'état des tickets expirés
         setTimers(newTimers);
 
         const interval = setInterval(() => {
@@ -195,12 +209,39 @@ const ViewTicket = () => {
                         updatedTimers[id] -= 1000;
                     }
                 }
+
+                // Vérifier les nouveaux timers expirés
+                const newlyExpired = tickets.filter(
+                    (ticket) =>
+                        updatedTimers[ticket._id] === 0 &&
+                        !expiredTimerTickets.find((t) => t._id === ticket._id)
+                );
+                if (newlyExpired.length > 0) {
+                    setExpiredTimerTickets((prev) => [...prev, ...newlyExpired]);
+                }
+
                 return updatedTimers;
             });
         }, 1000);
 
         return () => clearInterval(interval);
     };
+
+    useEffect(() => {
+        if (!popupDisabled && expiredTimerTickets.length > 0) {
+            setPopupMessage(`Le timer du ticket ${expiredTimerTickets[0].numeroTicket} est expiré. Veuillez le relancer.`);
+        }
+    }, [expiredTimerTickets, popupDisabled]);
+
+
+    useEffect(() => {
+        return () => {
+            if (popupTimerRef.current) {
+                clearTimeout(popupTimerRef.current);
+            }
+        };
+    }, []);
+
 
     useEffect(() => {
         fetchTickets();
@@ -249,6 +290,25 @@ const ViewTicket = () => {
     };
 
 
+    const handleClosePopup = () => {
+        setPopupMessage(null); // Masque la popup
+        setPopupDisabled(true); // Désactive temporairement la popup
+        setExpiredTimerTickets((prev) => prev.slice(1)); // Retire le ticket traité
+
+        // Réactive la popup après 1 minute
+        popupTimerRef.current = setTimeout(() => {
+            setPopupDisabled(false);
+        }, 60000); // 1 minute en millisecondes
+    };
+
+
+    useEffect(() => {
+        return () => {
+            if (popupTimerRef.current) {
+                clearTimeout(popupTimerRef.current);
+            }
+        };
+    }, []);
 
 
     const handleUpdateTicket = async () => {
@@ -368,7 +428,7 @@ const ViewTicket = () => {
                                             <td className="py-2 px-4 border border-gray-300 text-center">
                                                 {collaborateurs.find((collab) => collab._id === ticket.collaborateur)?.nom || 'Non attribué'}
                                             </td>
-                                            <td className="py-2 px-4 border border-gray-300 text-center">{ticket.priorite}</td>
+                                            <td className={`py-2 px-4 border border-gray-300 text-center ${getPriorityColor(ticket.priorite)}`}>{ticket.priorite}</td>
                                             <td className="py-2 px-4 border border-gray-300 text-center">{ticket.sujet}</td>
                                             <td className="py-2 px-4 border border-gray-300 text-center">{ticket.description}</td>
                                             <td className="py-2 px-4 border border-gray-300 text-center">{ticket.beneficiaire}</td>
@@ -426,6 +486,20 @@ const ViewTicket = () => {
                     {popupMessage && (
                         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
                             {popupMessage}
+                        </div>
+                    )}
+
+                    {popupMessage && (
+                        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm z-50">
+                            <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm text-center">
+                                <p className="text-lg font-semibold">{popupMessage}</p>
+                                <button
+                                    onClick={handleClosePopup} // Utilisation correcte de la fonction
+                                    className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    Fermer
+                                </button>
+                            </div>
                         </div>
                     )}
 
