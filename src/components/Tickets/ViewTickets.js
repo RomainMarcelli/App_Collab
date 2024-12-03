@@ -125,6 +125,8 @@ const ViewTicket = () => {
     const [expiredTimerTickets, setExpiredTimerTickets] = useState([]); // État pour les tickets avec timers expirés
     const [popupDisabled, setPopupDisabled] = useState(false); // État pour désactiver temporairement la popup
     const popupTimerRef = useRef(null); // Référence pour stocker le timer
+    const [tooltip, setTooltip] = useState({ visible: false, description: '', x: 0, y: 0 });
+    // const [tooltipVisible, setTooltipVisible] = useState(false);
 
 
 
@@ -396,6 +398,18 @@ const ViewTicket = () => {
         }
     }
 
+    const handleMouseOver = (e, description) => {
+        setTooltip({
+            visible: true,
+            x: e.clientX,
+            y: e.clientY,
+            description: description,
+        });
+    };
+
+    const handleMouseOut = () => {
+        setTooltip({ visible: false, x: 0, y: 0, description: '' });
+    };
 
 
     return (
@@ -430,7 +444,13 @@ const ViewTicket = () => {
                                             </td>
                                             <td className={`py-2 px-4 border border-gray-300 text-center ${getPriorityColor(ticket.priorite)}`}>{ticket.priorite}</td>
                                             <td className="py-2 px-4 border border-gray-300 text-center">{ticket.sujet}</td>
-                                            <td className="py-2 px-4 border border-gray-300 text-center">{ticket.description}</td>
+                                            <td
+                                                className="px-4 py-4 border text-center truncate max-w-xs cursor-pointer"
+                                                onMouseOver={(e) => handleMouseOver(e, ticket.description)}
+                                                onMouseOut={handleMouseOut}
+                                            >
+                                                {ticket.description}
+                                            </td>
                                             <td className="py-2 px-4 border border-gray-300 text-center">{ticket.beneficiaire}</td>
                                             <td className="py-2 px-4 border border-gray-300 text-center">{formatDate(ticket.dateEmission)}</td>
                                             <td className="py-2 px-4 border border-gray-300 text-center">
@@ -471,6 +491,19 @@ const ViewTicket = () => {
                         </div>
                     ) : (
                         <p className="text-center">Aucun ticket disponible.</p>
+                    )}
+
+                    {tooltip.visible && (
+                        <div
+                            className="absolute bg-gray-800 text-white p-2 rounded-md"
+                            style={{
+                                left: tooltip.x + 10,
+                                top: tooltip.y + 10,
+                                zIndex: 9999,
+                            }}
+                        >
+                            {tooltip.description}
+                        </div>
                     )}
 
                     {editingTicket && (

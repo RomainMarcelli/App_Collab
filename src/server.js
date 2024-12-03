@@ -2,19 +2,20 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsDoc = require('swagger-jsdoc');
 
-// Importation des routes et modèles
+// Importation des routes
 const collaborateurRoutes = require('./routes/collabRoute');
 const ticketRoutes = require('./routes/ticketRoute');
-const closedRoutes = require('./routes/closedRoute'); // Chemin vers les routes des tickets fermés
+const closedRoutes = require('./routes/closedRoute');
 
-// Initialiser l'application Express
 const app = express();
 const PORT = 3000;
 
 // Middleware
-app.use(cors()); // Pour permettre les requêtes cross-origin
-app.use(bodyParser.json()); // Pour parser le JSON dans les requêtes
+app.use(cors());
+app.use(bodyParser.json());
 
 // Connexion à MongoDB
 mongoose.connect('mongodb://localhost:27017/CDS', {
@@ -26,12 +27,36 @@ mongoose.connect('mongodb://localhost:27017/CDS', {
     console.error('Erreur de connexion à MongoDB:', error);
 });
 
+// --- CONFIGURATION SWAGGER ---
+const swaggerOptions = {
+    definition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'API Documentation',
+            version: '1.0.0',
+            description: 'Documentation complète des endpoints de l\'API',
+        },
+        servers: [
+            {
+                url: 'http://localhost:3000/api',
+                description: 'Serveur local',
+            },
+        ],
+    },
+    apis: ['./src/routes/*.js'], // Met à jour pour inclure le bon chemin
+};
+
+
+const swaggerDocs = swaggerJsDoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+
 // --- ROUTES API ---
-app.use('/api', ticketRoutes); // Toutes les routes liées aux tickets sous /api/tickets
-app.use('/api', collaborateurRoutes); // Toutes les routes liées aux collaborateurs sous /api/collaborateurs
-app.use('/api', closedRoutes); // Routes des tickets fermés sous /api/closed-tickets
+app.use('/api', ticketRoutes); // Routes liées aux tickets
+app.use('/api', collaborateurRoutes); // Routes liées aux collaborateurs
+app.use('/api', closedRoutes); // Routes liées aux tickets fermés
 
 // Démarrer le serveur
 app.listen(PORT, () => {
     console.log(`Serveur en cours d'exécution sur http://localhost:${PORT}`);
+    console.log(`Documentation Swagger : http://localhost:${PORT}/api-docs`);
 });
