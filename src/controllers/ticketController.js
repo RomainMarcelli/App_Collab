@@ -71,10 +71,6 @@ exports.addTicket = async (req, res) => {
     }
 };
 
-
-
-
-
 // Mettre à jour un ticket
 exports.updateTicket = async (req, res) => {
     const { id } = req.params;
@@ -236,3 +232,31 @@ exports.closeTicket = async (req, res) => {
         return res.status(500).json({ message: 'Erreur lors de la clôture du ticket' });
     }
 };
+
+
+exports.updateTimer = async (req, res) => {
+    try {
+        const { additionalTime } = req.body; // Temps supplémentaire en millisecondes
+        const ticketId = req.params.id;
+
+        const ticket = await Ticket.findById(ticketId);
+        if (!ticket) {
+            return res.status(404).json({ message: 'Ticket non trouvé' });
+        }
+
+        // Ajoutez le temps supplémentaire
+        ticket.timerRemaining = (ticket.timerRemaining || 0) + additionalTime;
+
+        await ticket.save();
+
+        res.status(200).json({ 
+            message: 'Minuteur mis à jour avec succès', 
+            timerRemaining: ticket.timerRemaining 
+        });
+    } catch (error) {
+        console.error('Erreur lors de la mise à jour du minuteur:', error);
+        res.status(500).json({ message: 'Erreur interne du serveur' });
+    }
+};
+
+

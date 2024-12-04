@@ -241,4 +241,9 @@ router.put('/tickets/:id/affecter', ticketController.assignCollaborator);
  */
 router.get('/tickets/affectes/:collaborateurId', ticketController.getAssignedTickets);
 
+
+
+router.put('/tickets/:id/update-timer', ticketController.updateTimer);
+
+
 module.exports = router;

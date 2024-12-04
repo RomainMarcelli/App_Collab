@@ -86,7 +86,7 @@ const AffecterTickets = () => {
                     <table className="min-w-full bg-white border border-gray-200">
                         <thead>
                             <tr>
-                                <th className="border px-4 py-2">ID</th>
+                                <th className="border px-4 py-2">N° ticket</th>
                                 <th className="border px-4 py-2">Sujet</th>
                                 <th className="border px-4 py-2">Description</th>
                                 <th className="border px-4 py-2">Affecter à</th>
@@ -95,7 +95,7 @@ const AffecterTickets = () => {
                         <tbody>
                             {tickets.map((ticket) => (
                                 <tr key={ticket._id}>
-                                    <td className="border px-4 py-2">{ticket._id}</td>
+                                    <td className="border px-4 py-2">{ticket.numeroTicket}</td>
                                     <td className="border px-4 py-2">{ticket.sujet}</td>
                                     <td className="border px-4 py-2">{ticket.description}</td>
                                     <td className="border px-4 py-2  flex flex-col items-center">

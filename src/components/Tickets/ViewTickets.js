@@ -127,8 +127,7 @@ const ViewTicket = () => {
     const popupTimerRef = useRef(null); // Référence pour stocker le timer
     const [tooltip, setTooltip] = useState({ visible: false, description: '', x: 0, y: 0 });
     // const [tooltipVisible, setTooltipVisible] = useState(false);
-
-
+    const [additionalTime, setAdditionalTime] = useState(0);
 
     const slaDurations = {
         1: 30 * 60 * 1000, // 30 minutes
@@ -143,8 +142,16 @@ const ViewTicket = () => {
             const response = await fetch('http://localhost:3000/api/tickets');
             const data = await response.json();
             if (response.ok) {
-                console.log("Fetched tickets:", data); // Vérifie les données après mise à jour
                 setTickets(data);
+    
+                // Initialisez les timers locaux à partir de la valeur actuelle
+                const initialTimers = {};
+                data.forEach((ticket) => {
+                    const now = new Date().getTime();
+                    const expirationTime = new Date(ticket.timerExpiration).getTime();
+                    initialTimers[ticket._id] = expirationTime > now ? expirationTime - now : 0; // Calcule le temps restant ou 0 si expiré
+                });
+                setTimers(initialTimers);
             } else {
                 alert('Erreur lors de la récupération des tickets : ' + data.message);
             }
@@ -152,6 +159,7 @@ const ViewTicket = () => {
             console.error('Erreur réseau :', error);
         }
     };
+    
 
 
     const fetchCollaborateurs = async () => {
@@ -189,46 +197,44 @@ const ViewTicket = () => {
     const startTimers = () => {
         const newTimers = {};
         const expiredTickets = []; // Stocker les tickets avec timers expirés
-
+    
         tickets.forEach((ticket) => {
             const remainingTime = calculateRemainingTime(ticket.priorite, ticket.dateEmission);
-
+    
             if (remainingTime === 0) {
                 expiredTickets.push(ticket); // Ajouter les tickets expirés
             }
-
+    
             newTimers[ticket._id] = remainingTime;
         });
-
+    
         setExpiredTimerTickets(expiredTickets); // Mettre à jour l'état des tickets expirés
         setTimers(newTimers);
-
+    
         const interval = setInterval(() => {
             setTimers((prevTimers) => {
                 const updatedTimers = { ...prevTimers };
+    
                 for (const id in updatedTimers) {
                     if (updatedTimers[id] > 0) {
-                        updatedTimers[id] -= 1000;
+                        updatedTimers[id] -= 1000; // Diminue le timer de 1 seconde
+                    } else if (updatedTimers[id] === 0) {
+                        // Si le timer atteint 0, ajouter le ticket dans les expirés
+                        const expiredTicket = tickets.find((ticket) => ticket._id === id);
+                        if (expiredTicket && !expiredTimerTickets.find((t) => t._id === id)) {
+                            setExpiredTimerTickets((prev) => [...prev, expiredTicket]);
+                        }
+                        delete updatedTimers[id]; // Supprime le timer localement une fois expiré
                     }
                 }
-
-                // Vérifier les nouveaux timers expirés
-                const newlyExpired = tickets.filter(
-                    (ticket) =>
-                        updatedTimers[ticket._id] === 0 &&
-                        !expiredTimerTickets.find((t) => t._id === ticket._id)
-                );
-                if (newlyExpired.length > 0) {
-                    setExpiredTimerTickets((prev) => [...prev, ...newlyExpired]);
-                }
-
+    
                 return updatedTimers;
             });
         }, 1000);
-
+    
         return () => clearInterval(interval);
     };
-
+    
     useEffect(() => {
         if (!popupDisabled && expiredTimerTickets.length > 0) {
             setPopupMessage(`Le timer du ticket ${expiredTimerTickets[0].numeroTicket} est expiré. Veuillez le relancer.`);
@@ -411,7 +417,46 @@ const ViewTicket = () => {
         setTooltip({ visible: false, x: 0, y: 0, description: '' });
     };
 
-
+    const handleAddTime = async (ticketId) => {
+        const addedTime = parseInt(additionalTime, 10) * 60 * 1000; // Convertir les minutes en millisecondes
+        if (isNaN(addedTime) || addedTime <= 0) {
+            alert('Veuillez entrer une durée valide en minutes.');
+            return;
+        }
+    
+        try {
+            const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}/update-timer`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ additionalTime: addedTime }),
+            });
+    
+            if (response.ok) {
+                const data = await response.json();
+    
+                // Mettre à jour localement le timer pour qu'il démarre immédiatement
+                setTimers((prevTimers) => ({
+                    ...prevTimers,
+                    [ticketId]: addedTime, // Initialise le nouveau timer avec le temps ajouté
+                }));
+    
+                // Retirer le ticket des expirés s'il était expiré
+                setExpiredTimerTickets((prev) => prev.filter((ticket) => ticket._id !== ticketId));
+    
+                // Réinitialiser la saisie et fermer la popup
+                setPopupMessage(null);
+                setAdditionalTime(0);
+            } else {
+                console.error('Erreur lors de la mise à jour du temps sur le serveur');
+                alert('Erreur lors de la mise à jour du temps.');
+            }
+        } catch (error) {
+            console.error('Erreur lors de la requête pour ajouter du temps:', error);
+            alert('Une erreur est survenue lors de l’ajout du temps.');
+        }
+    };
     return (
         <>
             <Navbar />
@@ -457,7 +502,11 @@ const ViewTicket = () => {
                                                 {formatSlaDuration(slaDurations[ticket.priorite])}
                                             </td>
                                             <td className="py-2 px-4 border border-gray-300 text-center">
-                                                {timers[ticket._id] !== undefined ? formatTime(timers[ticket._id]) : 'Calcul en cours...'}
+                                                {timers[ticket._id] !== undefined && timers[ticket._id] > 0
+                                                    ? formatTime(timers[ticket._id]) // Affiche le timer local actif
+                                                    : ticket.timerRemaining // Si le timer local est expiré, affiche le timer depuis la BDD
+                                                        ? formatTime(ticket.timerRemaining)
+                                                        : 'Expiré'} {/* Indique que le timer est expiré si aucune info disponible */}
                                             </td>
                                             <td className="py-2 px-6 border border-gray-300 text-center flex flex-col items-center w-[250px]">
                                                 <button
@@ -516,27 +565,42 @@ const ViewTicket = () => {
                     )}
 
 
-                    {popupMessage && (
+                    {/* {popupMessage && (
                         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
                             {popupMessage}
                         </div>
-                    )}
+                    )} */}
 
-                    {popupMessage && (
+                    {popupMessage && expiredTimerTickets.length > 0 && (
                         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm z-50">
                             <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm text-center">
                                 <p className="text-lg font-semibold">{popupMessage}</p>
-                                <button
-                                    onClick={handleClosePopup} // Utilisation correcte de la fonction
-                                    className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                    Fermer
-                                </button>
+                                <div className="mt-4">
+                                    <input
+                                        type="number"
+                                        placeholder="Durée supplémentaire (en minutes)"
+                                        value={additionalTime}
+                                        onChange={(e) => setAdditionalTime(e.target.value)}
+                                        className="border rounded px-3 py-2 w-full mb-2"
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            handleAddTime(expiredTimerTickets[0]._id); // Ajout de temps
+                                        }}
+                                        className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 mr-2"
+                                    >
+                                        Ajouter du temps
+                                    </button>
+                                    <button
+                                        onClick={handleClosePopup} // Bouton pour fermer sans ajouter
+                                        className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+                                    >
+                                        Fermer
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
-
-
                 </div>
             </div>
         </>
