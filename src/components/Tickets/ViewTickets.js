@@ -141,17 +141,27 @@ const ViewTicket = () => {
         try {
             const response = await fetch('http://localhost:3000/api/tickets');
             const data = await response.json();
+
             if (response.ok) {
                 setTickets(data);
-    
-                // Initialisez les timers locaux à partir de la valeur actuelle
+
                 const initialTimers = {};
+                const expiredTickets = [];
+
                 data.forEach((ticket) => {
                     const now = new Date().getTime();
                     const expirationTime = new Date(ticket.timerExpiration).getTime();
-                    initialTimers[ticket._id] = expirationTime > now ? expirationTime - now : 0; // Calcule le temps restant ou 0 si expiré
+                    const remainingTime = expirationTime > now ? expirationTime - now : 0;
+
+                    if (remainingTime > 0) {
+                        initialTimers[ticket._id] = remainingTime; // Timer actif
+                    } else {
+                        expiredTickets.push(ticket); // Timer expiré
+                    }
                 });
+
                 setTimers(initialTimers);
+                setExpiredTimerTickets(expiredTickets);
             } else {
                 alert('Erreur lors de la récupération des tickets : ' + data.message);
             }
@@ -159,9 +169,6 @@ const ViewTicket = () => {
             console.error('Erreur réseau :', error);
         }
     };
-    
-
-
     const fetchCollaborateurs = async () => {
         try {
             const response = await fetch('http://localhost:3000/api/collaborateurs');
@@ -413,6 +420,20 @@ const ViewTicket = () => {
         });
     };
 
+    useEffect(() => {
+        if (!popupDisabled && expiredTimerTickets.length > 0) {
+            const ticketsSansTimerActif = expiredTimerTickets.filter(
+                (ticket) => !timers[ticket._id] || timers[ticket._id] === 0
+            );
+
+            if (ticketsSansTimerActif.length > 0) {
+                setPopupMessage(
+                    `Le timer du ticket ${ticketsSansTimerActif[0].numeroTicket} est expiré. Veuillez le relancer.`
+                );
+            }
+        }
+    }, [expiredTimerTickets, popupDisabled, timers]);
+
     const handleMouseOut = () => {
         setTooltip({ visible: false, x: 0, y: 0, description: '' });
     };
@@ -423,7 +444,7 @@ const ViewTicket = () => {
             alert('Veuillez entrer une durée valide en minutes.');
             return;
         }
-    
+
         try {
             const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}/update-timer`, {
                 method: 'PUT',
@@ -432,22 +453,23 @@ const ViewTicket = () => {
                 },
                 body: JSON.stringify({ additionalTime: addedTime }),
             });
-    
+
             if (response.ok) {
                 const data = await response.json();
-    
-                // Mettre à jour localement le timer pour qu'il démarre immédiatement
+
+                // Met à jour le timer localement
                 setTimers((prevTimers) => ({
                     ...prevTimers,
-                    [ticketId]: addedTime, // Initialise le nouveau timer avec le temps ajouté
+                    [ticketId]: addedTime, // Redémarre le timer avec le temps ajouté
                 }));
-    
-                // Retirer le ticket des expirés s'il était expiré
-                setExpiredTimerTickets((prev) => prev.filter((ticket) => ticket._id !== ticketId));
-    
-                // Réinitialiser la saisie et fermer la popup
-                setPopupMessage(null);
-                setAdditionalTime(0);
+
+                // Retirer le ticket de la liste des expirés
+                setExpiredTimerTickets((prev) =>
+                    prev.filter((ticket) => ticket._id !== ticketId)
+                );
+
+                setPopupMessage(null); // Ferme la popup
+                setAdditionalTime(0); // Réinitialise le champ de saisie
             } else {
                 console.error('Erreur lors de la mise à jour du temps sur le serveur');
                 alert('Erreur lors de la mise à jour du temps.');
@@ -457,6 +479,7 @@ const ViewTicket = () => {
             alert('Une erreur est survenue lors de l’ajout du temps.');
         }
     };
+
     return (
         <>
             <Navbar />
@@ -571,36 +594,38 @@ const ViewTicket = () => {
                         </div>
                     )} */}
 
-                    {popupMessage && expiredTimerTickets.length > 0 && (
-                        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm z-50">
-                            <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm text-center">
-                                <p className="text-lg font-semibold">{popupMessage}</p>
-                                <div className="mt-4">
-                                    <input
-                                        type="number"
-                                        placeholder="Durée supplémentaire (en minutes)"
-                                        value={additionalTime}
-                                        onChange={(e) => setAdditionalTime(e.target.value)}
-                                        className="border rounded px-3 py-2 w-full mb-2"
-                                    />
-                                    <button
-                                        onClick={() => {
-                                            handleAddTime(expiredTimerTickets[0]._id); // Ajout de temps
-                                        }}
-                                        className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 mr-2"
-                                    >
-                                        Ajouter du temps
-                                    </button>
-                                    <button
-                                        onClick={handleClosePopup} // Bouton pour fermer sans ajouter
-                                        className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
-                                    >
-                                        Fermer
-                                    </button>
+                    {popupMessage &&
+                        expiredTimerTickets.length > 0 &&
+                        expiredTimerTickets.every((ticket) => !ticket.timerRemaining || ticket.timerRemaining === 0) && (
+                            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm z-50">
+                                <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm text-center">
+                                    <p className="text-lg font-semibold">{popupMessage}</p>
+                                    <div className="mt-4">
+                                        <input
+                                            type="number"
+                                            placeholder="Durée supplémentaire (en minutes)"
+                                            value={additionalTime}
+                                            onChange={(e) => setAdditionalTime(e.target.value)}
+                                            className="border rounded px-3 py-2 w-full mb-2"
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                handleAddTime(expiredTimerTickets[0]._id); // Ajout de temps
+                                            }}
+                                            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 mr-2"
+                                        >
+                                            Ajouter du temps
+                                        </button>
+                                        <button
+                                            onClick={handleClosePopup} // Bouton pour fermer sans ajouter
+                                            className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+                                        >
+                                            Fermer
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
                 </div>
             </div>
         </>
