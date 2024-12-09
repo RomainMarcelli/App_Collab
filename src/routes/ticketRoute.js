@@ -245,5 +245,11 @@ router.get('/tickets/affectes/:collaborateurId', ticketController.getAssignedTic
 
 router.put('/tickets/:id/update-timer', ticketController.updateTimer);
 
+router.put('/tickets/:id/remove-timer', (req, res, next) => {
+    console.log(`Requête reçue pour supprimer le timer du ticket : ${req.params.id}`);
+    next(); // Passe au contrôleur
+}, ticketController.removeTimer);
+
+
 
 module.exports = router;

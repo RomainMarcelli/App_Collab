@@ -259,4 +259,28 @@ exports.updateTimer = async (req, res) => {
     }
 };
 
+exports.removeTimer = async (req, res) => {
+    console.log(`Contrôleur appelé pour supprimer le timer du ticket : ${req.params.id}`);
+    try {
+        const ticketId = req.params.id;
+        const ticket = await Ticket.findById(ticketId);
+        console.log(`Requête reçue pour supprimer le timer du ticket : ${ticketId}`); // Log
+
+        if (!ticket) {
+            console.error(`Ticket non trouvé : ${ticketId}`);
+            return res.status(404).json({ message: 'Ticket non trouvé' });
+        }
+
+        ticket.timerRemaining = null; // Supprime ou réinitialise le timer
+        await ticket.save();
+
+        console.log(`Timer supprimé pour le ticket : ${ticketId}`); // Log succès
+        res.status(200).json({ message: 'Timer supprimé avec succès' });
+    } catch (error) {
+        console.error('Erreur lors de la suppression du timer:', error);
+        res.status(500).json({ message: 'Erreur interne du serveur' });
+    }
+};
+
+
 

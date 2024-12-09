@@ -139,36 +139,38 @@ const ViewTicket = () => {
 
     const fetchTickets = async () => {
         try {
+            console.log("Fetching tickets...");
             const response = await fetch('http://localhost:3000/api/tickets');
             const data = await response.json();
 
             if (response.ok) {
+                console.log("Tickets fetched successfully:", data);
                 setTickets(data);
 
                 const initialTimers = {};
-                const expiredTickets = [];
-
                 data.forEach((ticket) => {
-                    const now = new Date().getTime();
-                    const expirationTime = new Date(ticket.timerExpiration).getTime();
-                    const remainingTime = expirationTime > now ? expirationTime - now : 0;
-
-                    if (remainingTime > 0) {
-                        initialTimers[ticket._id] = remainingTime; // Timer actif
-                    } else {
-                        expiredTickets.push(ticket); // Timer expiré
-                    }
+                    const remainingTime = calculateRemainingTime(ticket.expirationTime);
+                    initialTimers[ticket._id] = remainingTime;
                 });
 
-                setTimers(initialTimers);
-                setExpiredTimerTickets(expiredTickets);
+                console.log("Initialized timers:", initialTimers);
+                setTimers(initialTimers); // Synchroniser les timers
             } else {
-                alert('Erreur lors de la récupération des tickets : ' + data.message);
+                console.error('Erreur lors de la récupération des tickets');
             }
         } catch (error) {
             console.error('Erreur réseau :', error);
         }
     };
+
+
+    useEffect(() => {
+        fetchTickets().then(() => {
+            startTimers();
+        });
+    }, []);
+
+
     const fetchCollaborateurs = async () => {
         try {
             const response = await fetch('http://localhost:3000/api/collaborateurs');
@@ -182,8 +184,20 @@ const ViewTicket = () => {
         }
     };
 
-    const calculateRemainingTime = (priority, dateEmission) => {
-        // Durées en fonction des priorités
+    useEffect(() => {
+        console.log("Fetching tickets...");
+        fetchTickets();
+        fetchCollaborateurs(); // Si nécessaire
+    }, []);
+
+    const calculateRemainingTime = (priority, dateEmission, timerRemaining) => {
+        // Si le timerRemaining est fourni et valide, on l'utilise
+        if (timerRemaining && timerRemaining > 0) {
+            console.log(`Using timerRemaining for calculation: ${timerRemaining}`);
+            return timerRemaining; // Prioriser le timer existant
+        }
+    
+        // Durées associées à chaque priorité
         const priorityDurations = {
             '1': 15 * 60 * 1000, // 15 minutes
             '2': 30 * 60 * 1000, // 30 minutes
@@ -191,55 +205,75 @@ const ViewTicket = () => {
             '4': 35 * 60 * 60 * 1000, // 35 heures
             '5': 2 * 24 * 60 * 60 * 1000, // 2 jours
         };
-
+    
+        // Calcul du temps restant à partir de la date d'émission
         const now = new Date().getTime(); // Heure actuelle en millisecondes
-        const emissionTime = new Date(dateEmission).getTime(); // Date d'émission en millisecondes
+        const emissionTime = new Date(dateEmission).getTime(); // Temps de dateEmission en millisecondes
         const elapsedTime = now - emissionTime; // Temps écoulé depuis la date d'émission
-
-        // Calculer le temps restant
+    
+        // Temps restant basé sur la priorité
         const remainingTime = priorityDurations[priority] - elapsedTime;
-        return remainingTime > 0 ? remainingTime : 0; // Retourne 0 si le temps est écoulé
+    
+        console.log(
+            `Priority: ${priority}, Date Emission: ${dateEmission}, Elapsed Time: ${elapsedTime}, Calculated Remaining Time: ${remainingTime}`
+        );
+    
+        // Retourne le temps restant (ou 0 si expiré)
+        return remainingTime > 0 ? remainingTime : 0;
     };
-
+    
+    
     const startTimers = () => {
+        console.log("Starting timers...");
         const newTimers = {};
-        const expiredTickets = []; // Stocker les tickets avec timers expirés
+        const expiredTickets = [];
     
         tickets.forEach((ticket) => {
-            const remainingTime = calculateRemainingTime(ticket.priorite, ticket.dateEmission);
+            const remainingTime = calculateRemainingTime(
+                ticket.priorite,
+                ticket.dateEmission,
+                timers[ticket._id] || ticket.timerRemaining // Prioriser timer local ou BDD
+            );
     
-            if (remainingTime === 0) {
-                expiredTickets.push(ticket); // Ajouter les tickets expirés
+            if (remainingTime > 0) {
+                newTimers[ticket._id] = remainingTime;
+            } else {
+                expiredTickets.push(ticket);
             }
     
-            newTimers[ticket._id] = remainingTime;
+            console.log(`Ticket ID: ${ticket._id}, Remaining Time: ${remainingTime}`);
         });
     
-        setExpiredTimerTickets(expiredTickets); // Mettre à jour l'état des tickets expirés
+        console.log("Timers after initialization:", newTimers);
         setTimers(newTimers);
+        setExpiredTimerTickets(expiredTickets);
     
         const interval = setInterval(() => {
             setTimers((prevTimers) => {
                 const updatedTimers = { ...prevTimers };
     
-                for (const id in updatedTimers) {
+                Object.keys(updatedTimers).forEach((id) => {
                     if (updatedTimers[id] > 0) {
-                        updatedTimers[id] -= 1000; // Diminue le timer de 1 seconde
-                    } else if (updatedTimers[id] === 0) {
-                        // Si le timer atteint 0, ajouter le ticket dans les expirés
+                        updatedTimers[id] -= 1000; // Réduit de 1 seconde
+                        console.log(`Timer decremented for Ticket ID: ${id}, Remaining Time: ${updatedTimers[id]}`);
+                    } else {
                         const expiredTicket = tickets.find((ticket) => ticket._id === id);
-                        if (expiredTicket && !expiredTimerTickets.find((t) => t._id === id)) {
+                        if (expiredTicket && !expiredTimerTickets.some((t) => t._id === id)) {
+                            console.log(`Timer expired for Ticket ID: ${id}`);
                             setExpiredTimerTickets((prev) => [...prev, expiredTicket]);
                         }
-                        delete updatedTimers[id]; // Supprime le timer localement une fois expiré
+                        delete updatedTimers[id];
                     }
-                }
+                });
     
                 return updatedTimers;
             });
         }, 1000);
     
-        return () => clearInterval(interval);
+        return () => {
+            console.log("Clearing timers...");
+            clearInterval(interval);
+        };
     };
     
     useEffect(() => {
@@ -438,6 +472,26 @@ const ViewTicket = () => {
         setTooltip({ visible: false, x: 0, y: 0, description: '' });
     };
 
+    const removeTimerFromDatabase = async (ticketId) => {
+        console.log(`Suppression du timer pour le ticket : ${ticketId}`); // Log pour vérifier
+        try {
+            const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}/remove-timer`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                console.log(`Timer supprimé pour le ticket : ${ticketId}`);
+            } else {
+                console.error(`Erreur lors de la suppression du timer pour le ticket ${ticketId}`);
+            }
+        } catch (error) {
+            console.error(`Erreur lors de la requête de suppression pour le ticket ${ticketId}:`, error);
+        }
+    };
+
     const handleAddTime = async (ticketId) => {
         const addedTime = parseInt(additionalTime, 10) * 60 * 1000; // Convertir les minutes en millisecondes
         if (isNaN(addedTime) || addedTime <= 0) {
@@ -445,6 +499,7 @@ const ViewTicket = () => {
             return;
         }
 
+        console.log(`Adding ${addedTime}ms to Ticket ID: ${ticketId}`);
         try {
             const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}/update-timer`, {
                 method: 'PUT',
@@ -456,20 +511,43 @@ const ViewTicket = () => {
 
             if (response.ok) {
                 const data = await response.json();
+                console.log(`Updated timer for Ticket ID: ${ticketId}, New Remaining Time: ${data.timerRemaining}`);
 
                 // Met à jour le timer localement
                 setTimers((prevTimers) => ({
                     ...prevTimers,
-                    [ticketId]: addedTime, // Redémarre le timer avec le temps ajouté
+                    [ticketId]: data.timerRemaining, // Redémarre le timer avec le temps ajouté
                 }));
 
-                // Retirer le ticket de la liste des expirés
-                setExpiredTimerTickets((prev) =>
-                    prev.filter((ticket) => ticket._id !== ticketId)
-                );
+                // Supprime le ticket des expirés
+                setExpiredTimerTickets((prev) => prev.filter((ticket) => ticket._id !== ticketId));
 
                 setPopupMessage(null); // Ferme la popup
                 setAdditionalTime(0); // Réinitialise le champ de saisie
+
+                // Démarrer un interval pour gérer l'expiration
+                const interval = setInterval(() => {
+                    setTimers((prevTimers) => {
+                        const updatedTimers = { ...prevTimers };
+
+                        if (updatedTimers[ticketId] > 0) {
+                            updatedTimers[ticketId] -= 1000; // Diminue le timer de 1 seconde
+                        } else {
+                            // Timer terminé : Supprimer de la BDD
+                            clearInterval(interval);
+                            removeTimerFromDatabase(ticketId); // Appel à la fonction pour supprimer dans la BDD
+
+                            // Ajouter le ticket dans les expirés
+                            setExpiredTimerTickets((prev) => [
+                                ...prev,
+                                tickets.find((ticket) => ticket._id === ticketId),
+                            ]);
+                            setPopupMessage(`Le timer du ticket ${ticketId} est expiré. Veuillez le relancer.`);
+                        }
+
+                        return updatedTimers;
+                    });
+                }, 1000);
             } else {
                 console.error('Erreur lors de la mise à jour du temps sur le serveur');
                 alert('Erreur lors de la mise à jour du temps.');
@@ -479,6 +557,14 @@ const ViewTicket = () => {
             alert('Une erreur est survenue lors de l’ajout du temps.');
         }
     };
+
+    useEffect(() => {
+        if (tickets.length > 0) {
+            const stopTimers = startTimers(); // Démarrer les timers
+            return () => stopTimers(); // Nettoyer les timers à chaque changement
+        }
+    }, [tickets]);
+
 
     return (
         <>
@@ -526,10 +612,16 @@ const ViewTicket = () => {
                                             </td>
                                             <td className="py-2 px-4 border border-gray-300 text-center">
                                                 {timers[ticket._id] !== undefined && timers[ticket._id] > 0
-                                                    ? formatTime(timers[ticket._id]) // Affiche le timer local actif
-                                                    : ticket.timerRemaining // Si le timer local est expiré, affiche le timer depuis la BDD
-                                                        ? formatTime(ticket.timerRemaining)
-                                                        : 'Expiré'} {/* Indique que le timer est expiré si aucune info disponible */}
+                                                    ? (
+                                                        console.log(`Rendering timer for Ticket ID: ${ticket._id}, Remaining Time: ${timers[ticket._id]}`),
+                                                        formatTime(timers[ticket._id]) // Affiche la durée restante
+                                                    )
+                                                    : (
+                                                        console.log(`Timer expired or undefined for Ticket ID: ${ticket._id}`),
+                                                        ticket.timerRemaining // Si le timer local est expiré, vérifiez celui de la BDD
+                                                            ? formatTime(ticket.timerRemaining)
+                                                            : 'Expiré' // Indique que le timer est expiré si aucune info disponible
+                                                    )}
                                             </td>
                                             <td className="py-2 px-6 border border-gray-300 text-center flex flex-col items-center w-[250px]">
                                                 <button
