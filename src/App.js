@@ -12,6 +12,7 @@ import ListTicketClose from './components/Tickets/ListTicketClose';
 // import TimerManagerWithForm from '../backup/test/TimerManagerWithForm';
 // import TicketsList from '../backup/test/TicketsList';
 
+import Notif from './components/Notif/notif.js'
 
 const App = () => {
     return (
@@ -25,6 +26,7 @@ const App = () => {
                     <Route path="/affecter-ticket" element={<AffecterTickets />} />
                     <Route path="/view-name" element={<ViewName />} />
                     <Route path="/ticket-close" element={<ListTicketClose />} />
+                    <Route path="/notif" element={<Notif />} />
                     {/* <Route path="/ticket-page" element={<TicketTestPage />} />
                     <Route path="/ticket-view" element={<TicketsView />} />
                     <Route path="/timer-view" element={<TimerManagerWithForm />} />

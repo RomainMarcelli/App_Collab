@@ -13,7 +13,7 @@ const AffecterTickets = () => {
     useEffect(() => {
         const fetchTickets = async () => {
             try {
-                const response = await axios.get('http://localhost:3000/api/tickets');
+                const response = await axios.get('http://localhost:5000/api/tickets');
                 const nonAffectes = response.data.filter(ticket => !ticket.estAffecte);
                 setTickets(nonAffectes);
             } catch (error) {
@@ -23,7 +23,7 @@ const AffecterTickets = () => {
     
         const fetchCollaborateurs = async () => {
             try {
-                const response = await axios.get('http://localhost:3000/api/collaborateurs');
+                const response = await axios.get('http://localhost:5000/api/collaborateurs');
                 setCollaborateurs(response.data);
             } catch (error) {
                 console.error('Erreur lors de la récupération des collaborateurs:', error);
@@ -50,7 +50,7 @@ const AffecterTickets = () => {
         }
 
         try {
-            await axios.put(`http://localhost:3000/api/tickets/${ticketId}/affecter`, { collaborateurId });
+            await axios.put(`http://localhost:5000/api/tickets/${ticketId}/affecter`, { collaborateurId });
             setPopupMessage('Ticket affecté avec succès !');
             setPopupVisible(true);
             

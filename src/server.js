@@ -4,18 +4,26 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsDoc = require('swagger-jsdoc');
+const { sendDesktopNotification } = require('./utils/notification');
+const { checkForAlerts } = require('./controllers/notifController'); // ✅ Import de la vérification des alertes
+
 
 // Importation des routes
 const collaborateurRoutes = require('./routes/collabRoute');
 const ticketRoutes = require('./routes/ticketRoute');
 const closedRoutes = require('./routes/closedRoute');
+const notifRoutes = require('./routes/notifRoute');
 
 const app = express();
-const PORT = 3000;
+const PORT = 5000;
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
+
+process.env.TZ = "Europe/Paris"; // ✅ Force l'heure française pour tout le backend
+console.log("🕒 Fuseau horaire du serveur :", process.env.TZ);
+
 
 // Connexion à MongoDB
 mongoose.connect('mongodb://localhost:27017/CDS', {
@@ -23,6 +31,10 @@ mongoose.connect('mongodb://localhost:27017/CDS', {
     useUnifiedTopology: true,
 }).then(() => {
     console.log('Connecté à MongoDB');
+     // 🔹 Vérifier les alertes immédiatement après la connexion
+     checkForAlerts();
+     // 🔹 Vérifier les alertes toutes les minutes
+    setInterval(checkForAlerts, 60 * 1000);
 }).catch((error) => {
     console.error('Erreur de connexion à MongoDB:', error);
 });
@@ -38,7 +50,7 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: 'http://localhost:3000/api',
+                url: 'http://localhost:5000/api',
                 description: 'Serveur local',
             },
         ],
@@ -54,6 +66,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 app.use('/api', ticketRoutes); // Routes liées aux tickets
 app.use('/api', collaborateurRoutes); // Routes liées aux collaborateurs
 app.use('/api', closedRoutes); // Routes liées aux tickets fermés
+app.use('/api', notifRoutes); // Nouvelle route pour les notifications
 
 // Démarrer le serveur
 app.listen(PORT, () => {

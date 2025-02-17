@@ -37,7 +37,7 @@ const CreateTicketForm = () => {
             const dateEmission = parsedDate.toISOString();
             const dataToSend = { ...formData, dateEmission };
 
-            const response = await fetch('http://localhost:3000/api/tickets', {
+            const response = await fetch('http://localhost:5000/api/tickets', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

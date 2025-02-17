@@ -140,7 +140,7 @@ const ViewTicket = () => {
     const fetchTickets = async () => {
         try {
             console.log("Fetching tickets...");
-            const response = await fetch('http://localhost:3000/api/tickets');
+            const response = await fetch('http://localhost:5000/api/tickets');
             const data = await response.json();
 
             if (response.ok) {
@@ -173,7 +173,7 @@ const ViewTicket = () => {
 
     const fetchCollaborateurs = async () => {
         try {
-            const response = await fetch('http://localhost:3000/api/collaborateurs');
+            const response = await fetch('http://localhost:5000/api/collaborateurs');
             if (!response.ok) {
                 throw new Error('Erreur lors de la récupération des collaborateurs');
             }
@@ -223,58 +223,71 @@ const ViewTicket = () => {
     };
     
     
-    const startTimers = () => {
-        console.log("Starting timers...");
-        const newTimers = {};
-        const expiredTickets = [];
-    
-        tickets.forEach((ticket) => {
-            const remainingTime = calculateRemainingTime(
-                ticket.priorite,
-                ticket.dateEmission,
-                timers[ticket._id] || ticket.timerRemaining // Prioriser timer local ou BDD
-            );
-    
-            if (remainingTime > 0) {
-                newTimers[ticket._id] = remainingTime;
-            } else {
-                expiredTickets.push(ticket);
-            }
-    
-            console.log(`Ticket ID: ${ticket._id}, Remaining Time: ${remainingTime}`);
-        });
-    
-        console.log("Timers after initialization:", newTimers);
-        setTimers(newTimers);
-        setExpiredTimerTickets(expiredTickets);
-    
-        const interval = setInterval(() => {
-            setTimers((prevTimers) => {
-                const updatedTimers = { ...prevTimers };
-    
-                Object.keys(updatedTimers).forEach((id) => {
-                    if (updatedTimers[id] > 0) {
-                        updatedTimers[id] -= 1000; // Réduit de 1 seconde
-                        console.log(`Timer decremented for Ticket ID: ${id}, Remaining Time: ${updatedTimers[id]}`);
-                    } else {
-                        const expiredTicket = tickets.find((ticket) => ticket._id === id);
-                        if (expiredTicket && !expiredTimerTickets.some((t) => t._id === id)) {
-                            console.log(`Timer expired for Ticket ID: ${id}`);
-                            setExpiredTimerTickets((prev) => [...prev, expiredTicket]);
-                        }
-                        delete updatedTimers[id];
-                    }
-                });
-    
-                return updatedTimers;
+        const startTimers = () => {
+            console.log("Starting timers...");
+            const newTimers = {};
+            const expiredTickets = [];
+        
+            tickets.forEach((ticket) => {
+                const remainingTime = calculateRemainingTime(
+                    ticket.priorite,
+                    ticket.dateEmission,
+                    timers[ticket._id] || ticket.timerRemaining // Prioriser timer local ou BDD
+                );
+        
+                if (remainingTime > 0) {
+                    newTimers[ticket._id] = remainingTime;
+                } else {
+                    expiredTickets.push(ticket);
+                }
+        
+                console.log(`Ticket ID: ${ticket._id}, Remaining Time: ${remainingTime}`);
             });
-        }, 1000);
-    
-        return () => {
-            console.log("Clearing timers...");
-            clearInterval(interval);
+        
+            console.log("Timers after initialization:", newTimers);
+            setTimers(newTimers); // Synchroniser les timers initiaux
+            setExpiredTimerTickets(expiredTickets);
+        
+            const interval = setInterval(() => {
+                setTimers((prevTimers) => {
+                    const updatedTimers = { ...prevTimers };
+        
+                    // Décrémentation des timers
+                    Object.keys(updatedTimers).forEach((id) => {
+                        if (updatedTimers[id] > 0) {
+                            updatedTimers[id] -= 1; // Réduit de 1 seconde
+                        } else {
+                            // Gérer les tickets expirés
+                            const expiredTicket = tickets.find((ticket) => ticket._id === id);
+                            if (expiredTicket && !expiredTimerTickets.some((t) => t._id === id)) {
+                                console.log(`Timer expired for Ticket ID: ${id}`);
+                                setExpiredTimerTickets((prev) => [...prev, expiredTicket]);
+                            }
+                            delete updatedTimers[id];
+                        }
+                    });
+        
+                    return updatedTimers;
+                });
+            }); // Décrémenter chaque seconde
+        
+            // Nettoyer l'intervalle lorsque le composant est démonté ou les tickets changent
+            return () => {
+                console.log("Clearing timers...");
+                clearInterval(interval);
+            };
         };
-    };
+    
+    
+    useEffect(() => {
+        if (tickets.length > 0) {
+            // Démarrer les timers si les tickets sont disponibles
+            const stopTimers = startTimers();
+            return () => {
+                stopTimers(); // Nettoyer l'intervalle lorsque le composant est démonté ou que les tickets changent
+            };
+        }
+    }, [tickets]); // Exécuter uniquement lorsque les tickets changent 
     
     useEffect(() => {
         if (!popupDisabled && expiredTimerTickets.length > 0) {
@@ -307,7 +320,7 @@ const ViewTicket = () => {
         const confirmed = window.confirm('Êtes-vous sûr de vouloir supprimer ce ticket ?');
         if (confirmed) {
             try {
-                const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}`, {
+                const response = await fetch(`http://localhost:5000/api/tickets/${ticketId}`, {
                     method: 'DELETE',
                 });
 
@@ -372,7 +385,7 @@ const ViewTicket = () => {
 
             console.log("Updating ticket with data:", updatedTicket);
 
-            const response = await fetch(`http://localhost:3000/api/tickets/${editingTicket._id}`, {
+            const response = await fetch(`http://localhost:5000/api/tickets/${editingTicket._id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -422,7 +435,7 @@ const ViewTicket = () => {
 
     async function handleCloseTicket(ticketId) {
         try {
-            const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}/close`, {
+            const response = await fetch(`http://localhost:5000/api/tickets/${ticketId}/close`, {
                 method: 'POST',
             });
 
@@ -438,7 +451,7 @@ const ViewTicket = () => {
 
             // Afficher la popup de succès
             setPopupMessage('Le ticket a été fermé avec succès.');
-            setTimeout(() => setPopupMessage(null), 3000); // Masquer après 3 secondes
+            setTimeout(() => setPopupMessage(null), 5000); // Masquer après 3 secondes
         } catch (error) {
             console.error('Erreur de clôture du ticket:', error);
             alert('Une erreur est survenue lors de la fermeture du ticket. Veuillez réessayer.');
@@ -475,7 +488,7 @@ const ViewTicket = () => {
     const removeTimerFromDatabase = async (ticketId) => {
         console.log(`Suppression du timer pour le ticket : ${ticketId}`); // Log pour vérifier
         try {
-            const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}/remove-timer`, {
+            const response = await fetch(`http://localhost:5000/api/tickets/${ticketId}/remove-timer`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -501,7 +514,7 @@ const ViewTicket = () => {
 
         console.log(`Adding ${addedTime}ms to Ticket ID: ${ticketId}`);
         try {
-            const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}/update-timer`, {
+            const response = await fetch(`http://localhost:5000/api/tickets/${ticketId}/update-timer`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

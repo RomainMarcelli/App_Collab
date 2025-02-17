@@ -16,6 +16,7 @@ const Navbar = () => {
                     {/* <Link to="/ticket-view" className="text-gray-300 hover:text-white mx-4">TEST PAGE</Link>
                     <Link to="/ticket-page" className="text-gray-300 hover:text-white mx-4">SEcond test PAGE</Link>
                     <Link to="/timer-view" className="text-gray-300 hover:text-white mx-4">Timer</Link> */}
+                    <Link to="/notif" className="text-gray-300 hover:text-white mx-4">Autre</Link> 
                 </div>
             </div>
         </nav>
