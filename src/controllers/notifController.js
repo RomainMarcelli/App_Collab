@@ -91,9 +91,8 @@ exports.checkForAlerts = async () => {
     const now = new Date();
     console.log("⏳ Date actuelle (UTC):", now);
 
-    const notifications = await Notif.find({ 
-        alertTime: { $lte: now }, 
-        alertSent: { $ne: true } 
+    const notifications = await Notif.find({
+        alertTime: { $lte: now } // ✅ Cherche toutes les notifications dont l'heure d'alerte est dépassée
     });
 
     console.log("🔍 Notifications trouvées :", notifications);
@@ -106,10 +105,9 @@ exports.checkForAlerts = async () => {
             `La deadline approche pour le ticket ${notif.ticketNumber} (Priorité ${notif.priority}).`
         );
 
-        await Notif.updateOne({ _id: notif._id }, { $set: { alertSent: true } });
+        // 🔴 NE PAS MARQUER `alertSent: true` pour que la notification continue d'être envoyée
     });
 };
 
-
-// ✅ Vérifier les alertes toutes les minutes
-setInterval(exports.checkForAlerts, 60 * 1000);
+// ✅ Vérifier les alertes toutes les 10 secondes (pour les tests)
+setInterval(exports.checkForAlerts, 10 * 1000);
