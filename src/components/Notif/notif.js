@@ -120,7 +120,7 @@ export default function TicketForm() {
             const response = await fetch(`http://localhost:5000/api/notif/${ticketId}`, {
                 method: "DELETE",
             });
-    
+
             if (response.ok) {
                 toast.success("🗑️ Ticket supprimé avec succès !");
                 setTickets((prevTickets) => prevTickets.filter((ticket) => ticket._id !== ticketId)); // ✅ Mise à jour de l'affichage
@@ -132,7 +132,7 @@ export default function TicketForm() {
             toast.error("❌ Erreur lors de la suppression !");
         }
     };
-    
+
 
     // ✅ Envoyer un ticket
     const handleSubmit = async (e) => {
@@ -152,14 +152,21 @@ export default function TicketForm() {
             const result = await response.json();
 
             if (response.ok) {
-                toast.success(`✅ Notification enregistrée ! Deadline: ${new Date(result.deadline).toLocaleString()}`, {
-                    position: "top-right",
-                    autoClose: 5000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                });
+                toast.success(
+                    <div style={{ textAlign: "left", lineHeight: "1.5" }}>
+                        <div style={{ fontSize: "16px", fontWeight: "bold" }}>Ticket enregistré !</div>
+                        <div><strong>Deadline:</strong> {new Date(result.deadline).toLocaleString()}</div>
+                        <div><strong>Alerte prévue:</strong> {new Date(result.alertTime).toLocaleString()}</div>
+                    </div>,
+                    {
+                        position: "top-right",
+                        autoClose: 5000,
+                        hideProgressBar: false,
+                        closeOnClick: true,
+                        pauseOnHover: true,
+                        draggable: true,
+                    }
+                );                
                 setTicketNumber("");
                 setPriority("1");
             } else {
@@ -218,18 +225,18 @@ export default function TicketForm() {
                     <ul className="space-y-2">
                         {tickets.map((ticket) => (
                             <li key={ticket._id} className="p-3 bg-gray-100 rounded-lg shadow flex justify-between items-center">
-                            <div>
-                                <p><strong>Ticket :</strong> {ticket.ticketNumber}</p>
-                                <p><strong>Priorité :</strong> {ticket.priority}</p>
-                                <p><strong>Deadline :</strong> {new Date(ticket.deadline).toLocaleString()}</p>
-                            </div>
-                            <button
-                                onClick={() => handleDelete(ticket._id)}
-                                className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-700"
-                            >
-                                Supprimer
-                            </button>
-                        </li>
+                                <div>
+                                    <p><strong>Ticket :</strong> {ticket.ticketNumber}</p>
+                                    <p><strong>Priorité :</strong> {ticket.priority}</p>
+                                    <p><strong>Deadline :</strong> {new Date(ticket.deadline).toLocaleString()}</p>
+                                </div>
+                                <button
+                                    onClick={() => handleDelete(ticket._id)}
+                                    className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-700"
+                                >
+                                    Supprimer
+                                </button>
+                            </li>
                         ))}
                     </ul>
                 )}
