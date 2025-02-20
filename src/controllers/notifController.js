@@ -48,10 +48,6 @@ exports.createNotifFromRequest = async (req, res) => {
         const deadline = calculateDeadline(priority);
         const alertTime = calculateAlertTime(priority, deadline);
 
-        console.log(`✅ Ticket: ${ticketNumber}`);
-        console.log(`🕒 Deadline (finale):`, deadline);
-        console.log(`🔔 alertTime (finale):`, alertTime);
-
         const newNotif = new Notif({ ticketNumber, priority, deadline, alertTime });
         await newNotif.save();
 
@@ -89,16 +85,12 @@ exports.getUpcomingNotifications = async (req, res) => {
 
 exports.checkForAlerts = async () => {
     const now = new Date();
-    console.log("⏳ Date actuelle (UTC):", now);
 
     const notifications = await Notif.find({
         alertTime: { $lte: now } // ✅ Cherche toutes les notifications dont l'heure d'alerte est dépassée
     });
 
-    console.log("🔍 Notifications trouvées :", notifications);
-
     notifications.forEach(async (notif) => {
-        console.log(`🚨 ALERTE : Ticket ${notif.ticketNumber} (Priorité ${notif.priority})`);
 
         sendDesktopNotification(
             "⚠️ Alerte Ticket",
@@ -108,6 +100,17 @@ exports.checkForAlerts = async () => {
         // 🔴 NE PAS MARQUER `alertSent: true` pour que la notification continue d'être envoyée
     });
 };
+
+exports.deleteNotif = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await Notif.findByIdAndDelete(id);
+        res.status(200).json({ message: "Ticket supprimé avec succès !" });
+    } catch (error) {
+        res.status(500).json({ message: "Erreur lors de la suppression du ticket", error });
+    }
+};
+
 
 // ✅ Vérifier les alertes toutes les 10 secondes (pour les tests)
 setInterval(exports.checkForAlerts, 10 * 1000);
