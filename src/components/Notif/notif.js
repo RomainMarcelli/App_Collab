@@ -7,6 +7,7 @@ export default function TicketForm() {
     const [ticketNumber, setTicketNumber] = useState("");
     const [priority, setPriority] = useState("1");
     const [tickets, setTickets] = useState([]); // ✅ Stocke les tickets récupérés
+    const [createdAt, setCreatedAt] = useState("");
 
     const [showModal, setShowModal] = useState(false);
     const [modalMessage, setModalMessage] = useState("");
@@ -137,8 +138,11 @@ export default function TicketForm() {
     // ✅ Envoyer un ticket
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const ticketData = { ticketNumber, priority };
-
+        const ticketData = {
+            ticketNumber,
+            priority,
+            createdAt: createdAt ? new Date(createdAt) : new Date(),
+        };
 
         try {
             const response = await fetch("http://localhost:5000/api/notif", {
@@ -166,7 +170,7 @@ export default function TicketForm() {
                         pauseOnHover: true,
                         draggable: true,
                     }
-                );                
+                );
                 setTicketNumber("");
                 setPriority("1");
             } else {
@@ -207,6 +211,15 @@ export default function TicketForm() {
                             ))}
                         </select>
                     </div>
+                    <div className="mb-4">
+                        <label className="block text-gray-700">Date de création du Ticket</label>
+                        <input
+                            type="datetime-local"
+                            value={createdAt}
+                            onChange={(e) => setCreatedAt(e.target.value)}
+                            className="w-full p-2 border rounded-lg"
+                        />
+                    </div>
                     <button
                         type="submit"
                         className="w-full bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600"
@@ -228,7 +241,9 @@ export default function TicketForm() {
                                 <div>
                                     <p><strong>Ticket :</strong> {ticket.ticketNumber}</p>
                                     <p><strong>Priorité :</strong> {ticket.priority}</p>
+                                    <p><strong>Crée:</strong> {new Date(ticket.createdAt).toLocaleString()}</p>
                                     <p><strong>Deadline :</strong> {new Date(ticket.deadline).toLocaleString()}</p>
+                                    <p><strong>Alerte prévue:</strong> {new Date(ticket.alertTime).toLocaleString()}</p>
                                 </div>
                                 <button
                                     onClick={() => handleDelete(ticket._id)}

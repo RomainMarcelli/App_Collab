@@ -21,5 +21,22 @@ const addBusinessHours = (date, hours) => {
     return newDate;
 };
 
+const addBusinessDays = (date, days) => {
+    let remainingDays = days;
+    let newDate = new Date(date);
 
-module.exports = { addBusinessHours };
+    while (remainingDays > 0) {
+        newDate.setDate(newDate.getDate() + 1); // ✅ Ajoute un jour complet
+
+        // ✅ Vérifie et saute les week-ends (Samedi = 6, Dimanche = 0)
+        while (newDate.getDay() === 6 || newDate.getDay() === 0) {
+            newDate.setDate(newDate.getDate() + 1);
+        }
+
+        remainingDays--;
+    }
+    return newDate;
+};
+
+
+module.exports = { addBusinessHours, addBusinessDays };

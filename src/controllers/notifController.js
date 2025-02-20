@@ -1,59 +1,88 @@
 const Notif = require('../models/notifModel');
 const { sendDesktopNotification } = require('../utils/notification'); // ✅ Assure-toi d'importer la fonction
-const { addBusinessHours } = require('../utils/timeUtils');
+const { addBusinessHours, addBusinessDays } = require('../utils/timeUtils');
 
 
 // Fonction pour calculer la deadline en fonction de la priorité
 
 // Fonction pour calculer la deadline en fonction de la priorité
-const calculateDeadline = (priority) => {
-    const now = new Date();
+const calculateDeadline = (priority, createdAt = null) => {
+    const now = createdAt ? new Date(createdAt) : new Date(); // ✅ Prend `createdAt` si fourni, sinon `new Date()`
 
     switch (priority) {
         case "1": return new Date(now.getTime() + 1 * 60 * 60 * 1000); // P1 = 1H
         case "2": return new Date(now.getTime() + 2 * 60 * 60 * 1000); // P2 = 2H
         case "3": return addBusinessHours(now, 8); // ✅ P3 = 8H avec business hours
-        case "4": return addBusinessHours(now, 20); // ✅ P4 = 3 jours (24h ouvrées)
-        case "5": return addBusinessHours(now, 40); // ✅ P5 = 5 jours (40h ouvrées)
+        case "4": return addBusinessDays(now, 3); // ✅ P4 = 3 jours complets
+        case "5": return addBusinessDays(now, 5); // ✅ P5 = 5 jours complets
         default: return now;
     }
 };
 
-
-const calculateAlertTime = (priority) => {
-    const now = new Date();
+const calculateAlertTime = (priority, createdAt) => {
+    let alertOffset;
+    let useBusinessDays = false; // ✅ Détermine si on compte en jours ouvrés
 
     switch (priority) {
-        case "1": return new Date(now.getTime() + 10 * 1000); // ✅ P1 = 10 sec
-        case "2": return new Date(now.getTime() + 15 * 60 * 1000); // ✅ P2 = 15 min
-        case "3": return addBusinessHours(now, 4); // ✅ P3 = 4H (business hours)
-        case "4": return addBusinessHours(now, 15); // ✅ P4 = 2 jours avant (16h ouvrées)
-        case "5": return addBusinessHours(now, 32); // ✅ P5 = 4 jours avant (32h ouvrées)
-        default: return now;
+        case "1": alertOffset = 10 / 3600; break;  // ✅ P1 = 10 secondes après `createdAt`
+        case "2": alertOffset = 15 / 60; break;   // ✅ P2 = 15 minutes après `createdAt`
+        case "3": alertOffset = 4; break;         // ✅ P3 = 4 heures après `createdAt`
+        case "4": alertOffset = 2; useBusinessDays = true; break; // ✅ P4 = 2 jours après `createdAt`
+        case "5": alertOffset = 4; useBusinessDays = true; break; // ✅ P5 = 4 jours après `createdAt`
+        default: alertOffset = 0;
+    }
+
+    console.log("📅 DEBUG: CreatedAt avant ajustement:", createdAt);
+
+    if (useBusinessDays) {
+        // ✅ Si P4 ou P5, ajouter des jours ouvrés à `createdAt`
+        const finalAlertTime = addBusinessDays(new Date(createdAt), alertOffset);
+        console.log("⏰ DEBUG: Alerte après correction avec jours ouvrés:", finalAlertTime);
+        return finalAlertTime;
+    } else {
+        // ✅ Si P1, P2 ou P3, ajouter des heures ouvrées à `createdAt`
+        const finalAlertTime = addBusinessHours(new Date(createdAt), alertOffset);
+        console.log("⏰ DEBUG: Alerte après correction avec heures ouvrées:", finalAlertTime);
+        return finalAlertTime;
     }
 };
 
-
-
-
-// Créer une notification avec une deadline
 exports.createNotifFromRequest = async (req, res) => {
     try {
-        const { ticketNumber, priority } = req.body;
+        const { ticketNumber, priority, createdAt } = req.body;
 
         if (!ticketNumber || !priority) {
             return res.status(400).json({ message: "Tous les champs sont requis !" });
         }
 
-        const deadline = calculateDeadline(priority);
-        const alertTime = calculateAlertTime(priority, deadline);
+        const createdDate = createdAt ? new Date(createdAt) : new Date(); // ✅ Prend `createdAt` si fourni
+        const deadline = calculateDeadline(priority, createdDate);
+        const alertTime = calculateAlertTime(priority, createdDate); // ✅ Maintenant basé sur `createdAt`
 
-        const newNotif = new Notif({ ticketNumber, priority, deadline, alertTime });
+        console.log("📌 DEBUG: Ticket:", ticketNumber);
+        console.log("📅 DEBUG: CreatedAt:", createdDate);
+        console.log("📆 DEBUG: Deadline:", deadline);
+        console.log("⏰ DEBUG: AlertTime:", alertTime); // ✅ Maintenant basé sur `createdAt`
+
+        const newNotif = new Notif({
+            ticketNumber,
+            priority,
+            createdAt: createdDate,
+            deadline,
+            alertTime,
+            alertSent: false,
+        });
+
         await newNotif.save();
 
-        res.status(201).json({ message: "Notification enregistrée avec succès !", deadline, alertTime });
+        res.status(201).json({
+            message: "Notification enregistrée avec succès !",
+            deadline,
+            alertTime,
+            createdAt: newNotif.createdAt,
+        });
     } catch (error) {
-        console.error("Erreur lors de l’enregistrement de la notification :", error);
+        console.error("❌ Erreur lors de l’enregistrement de la notification :", error);
         res.status(500).json({ message: "Erreur interne du serveur", error });
     }
 };
