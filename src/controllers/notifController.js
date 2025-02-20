@@ -32,17 +32,13 @@ const calculateAlertTime = (priority, createdAt) => {
         default: alertOffset = 0;
     }
 
-    console.log("📅 DEBUG: CreatedAt avant ajustement:", createdAt);
-
     if (useBusinessDays) {
         // ✅ Si P4 ou P5, ajouter des jours ouvrés à `createdAt`
         const finalAlertTime = addBusinessDays(new Date(createdAt), alertOffset);
-        console.log("⏰ DEBUG: Alerte après correction avec jours ouvrés:", finalAlertTime);
         return finalAlertTime;
     } else {
         // ✅ Si P1, P2 ou P3, ajouter des heures ouvrées à `createdAt`
         const finalAlertTime = addBusinessHours(new Date(createdAt), alertOffset);
-        console.log("⏰ DEBUG: Alerte après correction avec heures ouvrées:", finalAlertTime);
         return finalAlertTime;
     }
 };
@@ -58,11 +54,6 @@ exports.createNotifFromRequest = async (req, res) => {
         const createdDate = createdAt ? new Date(createdAt) : new Date(); // ✅ Prend `createdAt` si fourni
         const deadline = calculateDeadline(priority, createdDate);
         const alertTime = calculateAlertTime(priority, createdDate); // ✅ Maintenant basé sur `createdAt`
-
-        console.log("📌 DEBUG: Ticket:", ticketNumber);
-        console.log("📅 DEBUG: CreatedAt:", createdDate);
-        console.log("📆 DEBUG: Deadline:", deadline);
-        console.log("⏰ DEBUG: AlertTime:", alertTime); // ✅ Maintenant basé sur `createdAt`
 
         const newNotif = new Notif({
             ticketNumber,
