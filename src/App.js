@@ -19,6 +19,7 @@ const App = () => {
         <Router>
             <div>
                 <Routes>
+                    <Route path="/notif" element={<Notif />} />
                     <Route path="/create-ticket" element={<CreateTicketForm />} />
                     <Route path="/view-tickets" element={<ViewTickets />} />
                     <Route path="/create-collab" element={<CreateCollab />} />
@@ -26,13 +27,12 @@ const App = () => {
                     <Route path="/affecter-ticket" element={<AffecterTickets />} />
                     <Route path="/view-name" element={<ViewName />} />
                     <Route path="/ticket-close" element={<ListTicketClose />} />
-                    <Route path="/notif" element={<Notif />} />
                     {/* <Route path="/ticket-page" element={<TicketTestPage />} />
                     <Route path="/ticket-view" element={<TicketsView />} />
                     <Route path="/timer-view" element={<TimerManagerWithForm />} />
                     <Route path="/tickets" element={<TicketsList />} /> */}
                     {/* Route par défaut */}
-                    <Route exact path="/" element={<CreateTicketForm />} />
+                    <Route exact path="/" element={<Notif />} />
                 </Routes>
             </div>
         </Router>
