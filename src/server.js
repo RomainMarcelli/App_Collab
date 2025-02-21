@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsDoc = require('swagger-jsdoc');
 const { sendDesktopNotification } = require('./utils/notification');
+const { client } = require("./Discord/bot"); // ✅ Import du client Discord
 const { checkForAlerts } = require('./controllers/notifController'); // ✅ Import de la vérification des alertes
 
 
@@ -31,10 +32,15 @@ mongoose.connect('mongodb://localhost:27017/CDS', {
     useUnifiedTopology: true,
 }).then(() => {
     console.log('Connecté à MongoDB');
-     // 🔹 Vérifier les alertes immédiatement après la connexion
-     checkForAlerts();
-     // 🔹 Vérifier les alertes toutes les minutes
-    setInterval(checkForAlerts, 60 * 1000);
+    // 🔹 Vérifier les alertes immédiatement après la connexion
+    setTimeout(() => {
+        checkForAlerts(client);
+    }, 5000); // ✅ Attendre 5 secondes pour s'assurer que le bot est bien connecté        
+    // 🔹 Vérifier les alertes toutes les minutes
+    // ✅ Vérification des alertes toutes les 15 minutes (900 000 ms)
+    setInterval(() => {
+        checkForAlerts(client);
+    }, 900000);
 }).catch((error) => {
     console.error('Erreur de connexion à MongoDB:', error);
 });

@@ -1,3 +1,4 @@
+const { Client } = require("discord.js");
 const Notif = require('../models/notifModel');
 const { sendDesktopNotification } = require('../utils/notification'); // ✅ Assure-toi d'importer la fonction
 const { addBusinessHours, addBusinessDays } = require('../utils/timeUtils');
@@ -103,23 +104,35 @@ exports.getUpcomingNotifications = async (req, res) => {
 };
 
 
-exports.checkForAlerts = async () => {
+exports.checkForAlerts = async (client) => {
+    if (!client) {
+        console.error("❌ Erreur : client Discord non défini !");
+        return;
+    }
+
     const now = new Date();
+    const alerts = await Notif.find({ alertTime: { $lte: now }, alertSent: false });
 
-    const notifications = await Notif.find({
-        alertTime: { $lte: now } // ✅ Cherche toutes les notifications dont l'heure d'alerte est dépassée
-    });
+    if (alerts.length > 0) {
+        const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
+        if (!channel) {
+            console.error("❌ Impossible de trouver le canal Discord !");
+            return;
+        }
 
-    notifications.forEach(async (notif) => {
+        for (const notif of alerts) {
+            const message = `Pourriez-vous prendre ce ticket ${notif.ticketNumber} ? C'est une priorité ${notif.priority} svp`;
 
-        sendDesktopNotification(
-            "⚠️ Alerte Ticket",
-            `La deadline approche pour le ticket ${notif.ticketNumber} (Priorité ${notif.priority}).`
-        );
+            await channel.send(message);
 
-        // 🔴 NE PAS MARQUER `alertSent: true` pour que la notification continue d'être envoyée
-    });
+            // ✅ Marquer comme envoyé pour éviter les doublons
+            await Notif.updateOne({ _id: notif._id }, { $set: { alertSent: true } });
+
+            console.log(`✅ Message Discord envoyé pour ${notif.ticketNumber}`);
+        }
+    }
 };
+
 
 exports.deleteNotif = async (req, res) => {
     try {
@@ -130,7 +143,3 @@ exports.deleteNotif = async (req, res) => {
         res.status(500).json({ message: "Erreur lors de la suppression du ticket", error });
     }
 };
-
-
-// ✅ Vérifier les alertes toutes les 10 secondes (pour les tests)
-setInterval(exports.checkForAlerts, 10 * 1000);
