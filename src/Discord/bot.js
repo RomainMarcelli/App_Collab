@@ -57,6 +57,36 @@ client.on("messageCreate", async (message) => {
     }
 });
 
+// ✅ Écoute les messages pour détecter `!delete`
+client.on("messageCreate", async (message) => {
+    if (message.author.bot) return; // Ignore les messages des bots
+
+    const args = message.content.split(" ");
+    const command = args[0];
+
+    if (command === "!delete") {
+        if (args.length < 2) {
+            return message.reply("❌ **Utilisation:** `!delete [ticketNumber]`");
+        }
+
+        const ticketNumber = args[1];
+
+        try {
+            const deletedTicket = await Notif.findOneAndDelete({ ticketNumber });
+
+            if (!deletedTicket) {
+                return message.reply(`⚠️ Ticket **${ticketNumber}** introuvable.`);
+            }
+
+            message.reply(`✅ Ticket **${ticketNumber}** supprimé avec succès.`);
+            console.log(`🗑️ Ticket supprimé: ${ticketNumber}`);
+        } catch (error) {
+            console.error("❌ Erreur lors de la suppression du ticket:", error);
+            message.reply("❌ Une erreur s'est produite lors de la suppression du ticket.");
+        }
+    }
+});
+
 // ✅ Connexion du bot avec le token
 client.login(process.env.DISCORD_TOKEN).catch(err => {
     console.error("❌ Erreur de connexion au bot Discord :", err);
