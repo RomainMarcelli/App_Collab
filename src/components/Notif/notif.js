@@ -231,7 +231,9 @@ export default function TicketForm() {
 
             {/* ✅ Liste des tickets */}
             <div className="max-w-2xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg border border-gray-200">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">📋 Liste des Tickets</h2>
+                <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+                    📋 Liste des Tickets ({tickets.length})
+                </h2>
 
                 {tickets.length === 0 ? (
                     <p className="text-gray-500 text-center">Aucun ticket enregistré.</p>
