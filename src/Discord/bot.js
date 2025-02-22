@@ -32,7 +32,6 @@ client.once("ready", () => {
         // channel.send("✅ Bot en ligne et prêt à envoyer des alertes !");
     }
 
-    console.log("🚀 Vérification des alertes activée !");
     setInterval(async () => {
         await checkForAlerts(client);
     }, 10 * 1000); // ✅ Vérifie les alertes toutes les 10 secondes
@@ -75,11 +74,11 @@ client.on("messageCreate", async (message) => {
             const deletedTicket = await Notif.findOneAndDelete({ ticketNumber });
 
             if (!deletedTicket) {
-                return message.reply(`⚠️ Ticket **${ticketNumber}** introuvable.`);
+                return message.reply(`Ticket **${ticketNumber}** introuvable.`);
             }
 
-            message.reply(`✅ Ticket **${ticketNumber}** supprimé avec succès.`);
-            console.log(`🗑️ Ticket supprimé: ${ticketNumber}`);
+            message.reply(`Ticket **${ticketNumber}** supprimé avec succès.`);
+            console.log(`Ticket supprimé: ${ticketNumber}`);
         } catch (error) {
             console.error("❌ Erreur lors de la suppression du ticket:", error);
             message.reply("❌ Une erreur s'est produite lors de la suppression du ticket.");

@@ -16,9 +16,9 @@ exports.handleShinken = async (req, res) => {
 
         let message = "";
         if (tickets.length === 1) {
-            message = `Le ticket Shinken ${tickets[0]} est dans le backlog !`;
+            message = `Le ticket Shinken **${tickets[0]}** est dans le backlog !`;
         } else {
-            message = `Les tickets Shinken ${tickets.join(" / ")} sont dans le backlog`;
+            message = `Les tickets Shinken **${tickets.join(" / ")}** sont dans le backlog`;
         }
 
         await channel.send(message);

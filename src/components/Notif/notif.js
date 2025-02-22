@@ -9,7 +9,6 @@ export default function TicketForm() {
     const [tickets, setTickets] = useState([]); // ✅ Stocke les tickets récupérés
     const [createdAt, setCreatedAt] = useState("");
     const [showShinkenForm, setShowShinkenForm] = useState(false);
-    const [shinkenTicketNumber, setShinkenTicketNumber] = useState("");
     const [shinkenTicketCount, setShinkenTicketCount] = useState(1);
     const [shinkenTicketNumbers, setShinkenTicketNumbers] = useState([""]); // Stocke les tickets
     const [showModal, setShowModal] = useState(false);
@@ -223,7 +222,7 @@ export default function TicketForm() {
             });
 
             if (response.ok) {
-                toast.success(`🚀 Shinken activé pour ${shinkenTicketNumbers.length} tickets !`);
+                toast.success(`${shinkenTicketNumbers.length} tickets Shinken envoyés  !`);
                 setShinkenTicketNumbers([""]);
                 setShinkenTicketCount(1);
                 setShowShinkenForm(false);

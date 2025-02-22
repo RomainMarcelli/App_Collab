@@ -103,7 +103,6 @@ exports.getUpcomingNotifications = async (req, res) => {
     }
 };
 
-
 exports.checkForAlerts = async (client) => {
     if (!client) {
         console.error("❌ Erreur : client Discord non défini !");
@@ -121,18 +120,23 @@ exports.checkForAlerts = async (client) => {
         }
 
         for (const notif of alerts) {
-            const message = `Pourriez-vous prendre ce ticket ${notif.ticketNumber} ? C'est une priorité ${notif.priority} svp`;
+            // ✅ Ajoute la notification locale avant Discord
+            sendDesktopNotification(
+                "⚠️ Alerte Ticket",
+                `La deadline approche pour le ticket ${notif.ticketNumber} (Priorité ${notif.priority}).`
+            );
 
+            // ✅ Message Discord
+            const message = `Pourriez-vous prendre ce ticket **${notif.ticketNumber}** ? C'est une priorité **${notif.priority}** svp`;
             await channel.send(message);
 
             // ✅ Marquer comme envoyé pour éviter les doublons
             await Notif.updateOne({ _id: notif._id }, { $set: { alertSent: true } });
 
-            console.log(`✅ Message Discord envoyé pour ${notif.ticketNumber}`);
+            console.log(`✅ Notification envoyée pour ${notif.ticketNumber} (PC + Discord)`);
         }
     }
 };
-
 
 exports.deleteNotif = async (req, res) => {
     try {
