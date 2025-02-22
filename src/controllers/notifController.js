@@ -27,7 +27,7 @@ const calculateAlertTime = (priority, createdAt) => {
     switch (priority) {
         case "1": alertOffset = 10 / 3600; break;  // ✅ P1 = 10 secondes après `createdAt`
         case "2": alertOffset = 15 / 60; break;   // ✅ P2 = 15 minutes après `createdAt`
-        case "3": alertOffset = 4; break;         // ✅ P3 = 4 heures après `createdAt`
+        case "3": alertOffset = 5; break;         // ✅ P3 = 4 heures après `createdAt`
         case "4": alertOffset = 2; useBusinessDays = true; break; // ✅ P4 = 2 jours après `createdAt`
         case "5": alertOffset = 4; useBusinessDays = true; break; // ✅ P5 = 4 jours après `createdAt`
         default: alertOffset = 0;

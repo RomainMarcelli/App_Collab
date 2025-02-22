@@ -7,6 +7,7 @@ const swaggerJsDoc = require('swagger-jsdoc');
 const { sendDesktopNotification } = require('./utils/notification');
 const { client } = require("./Discord/bot"); // ✅ Import du client Discord
 const { checkForAlerts } = require('./controllers/notifController'); // ✅ Import de la vérification des alertes
+const shinkenRoutes = require('./routes/shinkenRoute'); // ✅ Importe la route
 
 
 // Importation des routes
@@ -73,6 +74,8 @@ app.use('/api', ticketRoutes); // Routes liées aux tickets
 app.use('/api', collaborateurRoutes); // Routes liées aux collaborateurs
 app.use('/api', closedRoutes); // Routes liées aux tickets fermés
 app.use('/api', notifRoutes); // Nouvelle route pour les notifications
+app.use('/api/shinken', shinkenRoutes); // ✅ Ajoute la route à l'API
+
 
 // Démarrer le serveur
 app.listen(PORT, () => {

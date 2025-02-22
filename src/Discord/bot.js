@@ -29,7 +29,7 @@ client.once("ready", () => {
     if (!channel) {
         console.error("❌ Impossible de trouver le canal Discord ! Vérifie l'ID.");
     } else {
-        channel.send("✅ Bot en ligne et prêt à envoyer des alertes !");
+        // channel.send("✅ Bot en ligne et prêt à envoyer des alertes !");
     }
 
     console.log("🚀 Vérification des alertes activée !");
@@ -86,6 +86,7 @@ client.on("messageCreate", async (message) => {
         }
     }
 });
+
 
 // ✅ Connexion du bot avec le token
 client.login(process.env.DISCORD_TOKEN).catch(err => {

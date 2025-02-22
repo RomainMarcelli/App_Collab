@@ -8,7 +8,10 @@ export default function TicketForm() {
     const [priority, setPriority] = useState("1");
     const [tickets, setTickets] = useState([]); // ✅ Stocke les tickets récupérés
     const [createdAt, setCreatedAt] = useState("");
-
+    const [showShinkenForm, setShowShinkenForm] = useState(false);
+    const [shinkenTicketNumber, setShinkenTicketNumber] = useState("");
+    const [shinkenTicketCount, setShinkenTicketCount] = useState(1);
+    const [shinkenTicketNumbers, setShinkenTicketNumbers] = useState([""]); // Stocke les tickets
     const [showModal, setShowModal] = useState(false);
     const [modalMessage, setModalMessage] = useState("");
 
@@ -81,15 +84,6 @@ export default function TicketForm() {
                 requireInteraction: true
             });
         }
-
-        toast.warn(message, {
-            position: "top-center",
-            autoClose: false,
-            closeOnClick: false,
-            pauseOnHover: true,
-            draggable: false,
-            style: { background: "#ffcc00", color: "#000", fontWeight: "bold", fontSize: "18px" }
-        });
     };
 
     // ✅ Popup plein écran
@@ -182,13 +176,76 @@ export default function TicketForm() {
         }
     };
 
+    // Met à jour le nombre de tickets et ajuste le tableau
+    const handleShinkenCountChange = (count) => {
+        setShinkenTicketCount(count);
+        setShinkenTicketNumbers(new Array(parseInt(count)).fill("")); // Remplit un tableau vide avec `count` entrées
+    };
+
+    // Met à jour les valeurs des tickets individuels
+    const handleShinkenTicketChange = (index, value) => {
+        const newTickets = [...shinkenTicketNumbers];
+        newTickets[index] = value;
+        setShinkenTicketNumbers(newTickets);
+    };
+
+    // Envoie les tickets à l'API
+    // Envoie le message sur Discord
+    const sendShinkenToDiscord = async (tickets) => {
+        try {
+            const response = await fetch("http://localhost:5000/api/shinken/discord", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ tickets }),
+            });
+
+            if (response.ok) {
+                console.log("✅ Message Shinken envoyé sur Discord !");
+            } else {
+                console.error("❌ Erreur lors de l'envoi du message Discord.");
+            }
+        } catch (error) {
+            console.error("❌ Impossible d'envoyer le message Discord :", error);
+        }
+    };
+
+    const handleShinkenSubmit = async () => {
+        if (shinkenTicketNumbers.some(ticket => !ticket.trim())) {
+            toast.error("❌ Veuillez remplir tous les champs.");
+            return;
+        }
+
+        try {
+            const response = await fetch("http://localhost:5000/api/shinken", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ tickets: shinkenTicketNumbers }),
+            });
+
+            if (response.ok) {
+                toast.success(`🚀 Shinken activé pour ${shinkenTicketNumbers.length} tickets !`);
+                setShinkenTicketNumbers([""]);
+                setShinkenTicketCount(1);
+                setShowShinkenForm(false);
+
+                // ✅ Envoie le message à Discord après l'ajout des tickets
+                await sendShinkenToDiscord(shinkenTicketNumbers);
+            } else {
+                toast.error("❌ Erreur lors de l'activation de Shinken.");
+            }
+        } catch (error) {
+            console.error("❌ Erreur lors de l'envoi :", error);
+            toast.error("❌ Impossible d'envoyer la demande.");
+        }
+    };
+
     return (
         <>
             <Navbar />
             <ToastContainer /> {/* ✅ Conteneur pour les notifications */}
             <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
                 <h2 className="text-xl font-semibold mb-4">Créer un Ticket</h2>
-                <form onSubmit={handleSubmit}>
+                {/* <form onSubmit={handleSubmit}>
                     <div className="mb-4">
                         <label className="block text-gray-700">Numéro du Ticket</label>
                         <input
@@ -226,7 +283,106 @@ export default function TicketForm() {
                     >
                         Soumettre
                     </button>
-                </form>
+                </form> */}
+                {!showShinkenForm ? (
+                    <div>
+                        {/* <h2 className="text-xl font-semibold mb-4">Créer un Ticket</h2> */}
+                        <form onSubmit={handleSubmit}>
+                            <div className="mb-4">
+                                <label className="block text-gray-700">Numéro du Ticket</label>
+                                <input
+                                    type="text"
+                                    value={ticketNumber}
+                                    onChange={(e) => setTicketNumber(e.target.value)}
+                                    className="w-full p-2 border rounded-lg"
+                                    required
+                                />
+                            </div>
+                            <div className="mb-4">
+                                <label className="block text-gray-700">Priorité</label>
+                                <select
+                                    value={priority}
+                                    onChange={(e) => setPriority(e.target.value)}
+                                    className="w-full p-2 border rounded-lg"
+                                >
+                                    {[1, 2, 3, 4, 5].map((num) => (
+                                        <option key={num} value={num}>{num}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="mb-4">
+                                <label className="block text-gray-700">Date de création du Ticket</label>
+                                <input
+                                    type="datetime-local"
+                                    value={createdAt}
+                                    onChange={(e) => setCreatedAt(e.target.value)}
+                                    className="w-full p-2 border rounded-lg"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                className="w-full bg-blue-500 text-white font-semibold p-3 rounded-lg shadow-md hover:bg-blue-600 hover:shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105"
+                            >
+                                Soumettre
+                            </button>
+                        </form>
+
+                        <button
+                            onClick={() => setShowShinkenForm(true)}
+                            className="w-full bg-gradient-to-r from-gray-800 to-black mt-5 text-white font-semibold p-3 rounded-lg shadow-md hover:from-black hover:to-gray-900 hover:shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105"
+                        >
+                            Shinken
+                        </button>
+                    </div>
+                ) : (
+                    <div className="mt-4 p-4 bg-white rounded-lg shadow-md border border-gray-300">
+                        <h2 className="text-lg font-bold text-gray-700">Saisir les Shinkens</h2>
+
+                        {/* Sélecteur du nombre de tickets */}
+                        <div className="mb-3">
+                            <label className="block text-gray-700 font-semibold">Nombre de tickets :</label>
+                            <select
+                                value={shinkenTicketCount}
+                                onChange={(e) => handleShinkenCountChange(e.target.value)}
+                                className="w-full p-2 border rounded-lg"
+                            >
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                                    <option key={num} value={num}>{num}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Champs pour entrer les numéros de tickets */}
+                        {shinkenTicketNumbers.map((ticket, index) => (
+                            <div key={index} className="mb-3">
+                                <input
+                                    type="text"
+                                    value={ticket}
+                                    onChange={(e) => handleShinkenTicketChange(index, e.target.value)}
+                                    className="w-full p-2 border rounded-lg"
+                                    placeholder={`Numéro du ticket ${index + 1}`}
+                                    required
+                                />
+                            </div>
+                        ))}
+
+                        <div className="flex justify-between mt-3">
+                            <button
+                                onClick={handleShinkenSubmit}
+                                className="w-full bg-gradient-to-r mr-3 from-green-500 to-green-600 text-white font-semibold p-3 rounded-lg shadow-md hover:from-green-600 hover:to-green-700 transition-all duration-300 ease-in-out transform hover:scale-105"
+                            >
+                                Valider
+                            </button>
+
+                            <button
+                                onClick={() => setShowShinkenForm(false)}
+                                className="w-full bg-gradient-to-r from-gray-500 to-gray-600 text-white font-semibold p-3 rounded-lg shadow-md hover:from-gray-600 hover:to-gray-700 transition-all duration-300 ease-in-out transform hover:scale-105"
+                            >
+                                Annuler
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* ✅ Liste des tickets */}
@@ -274,7 +430,6 @@ export default function TicketForm() {
                     </ul>
                 )}
             </div>
-
             {/* ✅ Popup plein écran */}
             {showModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center">
