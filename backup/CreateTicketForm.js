@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import Navbar from './navbar'; // Assurez-vous que le chemin est correct
+import { Link } from 'react-router-dom';
+import Navbar from '../navbar';
+import { createTicket } from '../../services/ticketService';  // Assurez-vous que ce chemin est correct
 
 const CreateTicketForm = () => {
     const [formData, setFormData] = useState({
@@ -11,6 +13,8 @@ const CreateTicketForm = () => {
         dateEmission: '',
     });
 
+    const [ticketCreated, setTicketCreated] = useState(false);
+
     const handleChange = (e) => {
         setFormData({
             ...formData,
@@ -20,59 +24,60 @@ const CreateTicketForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        try {
-            const response = await fetch('http://localhost:3000/api/tickets', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            });
 
-            const data = await response.json();
-            if (response.ok) {
-                alert('Ticket créé avec succès');
-                setFormData({
-                    numeroTicket: '',
-                    priorite: '1',
-                    sujet: '',
-                    description: '',
-                    beneficiaire: '',
-                    dateEmission: '',
-                });
-            } else {
-                console.log('Erreur côté serveur :', data);
-                alert('Erreur lors de la création du ticket : ' + data.message);
-            }
+        // Créer un objet Date à partir de la valeur du champ "dateEmission"
+        const dateTime = new Date(formData.dateEmission);
+
+        // Vérifier si la date est valide
+        if (isNaN(dateTime.getTime())) {
+            alert('Veuillez entrer une date et une heure valides.');
+            return;
+        }
+
+        // Créer un numéro de ticket unique (par exemple, basé sur le timestamp)
+        const numeroTicket = `TICKET-${Date.now()}`;
+
+        const newTicket = {
+            numeroTicket: numeroTicket,
+            priorite: formData.priorite,
+            sujet: formData.sujet,
+            description: formData.description,
+            beneficiaire: formData.beneficiaire,
+            dateEmission: dateTime.toISOString(),
+        };
+
+        try {
+            // Appel à la fonction createTicket de ticketService
+            const response = await createTicket(newTicket);
+
+            // Si le ticket est créé avec succès, on met à jour l'état
+            setTicketCreated(true);
+            setFormData({
+                numeroTicket: '',
+                priorite: '1',
+                sujet: '',
+                description: '',
+                beneficiaire: '',
+                dateEmission: '',
+            });
         } catch (error) {
-            console.error('Erreur réseau :', error);
-            alert('Erreur réseau : ' + error.message);
+            alert(`Erreur : ${error.message}`);
         }
     };
-
-    // Couleurs des priorités
-    const priorityColors = {
-        '1': 'bg-black text-white', // Priorité 1
-        '2': 'bg-red-500 text-white', // Priorité 2
-        '3': 'bg-yellow-500 text-black', // Priorité 3
-        '4': 'bg-blue-500 text-white', // Priorité 4
-        '5': 'bg-green-500 text-white', // Priorité 5
-    };
-
-    const priorityTimes = {
-        1: '1h',
-        2: '2h',
-        3: '8h',
-        4: '3 jours',
-        5: '5 jours',
-    };
-    
 
     return (
         <>
             <Navbar />
+            <div className="flex justify-end mt-4 mr-10 absolute right-1">
+                <Link to="/create-Collab">
+                    <button className="bg-indigo-500 text-white px-4 py-2 rounded-md hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        Ajouter Collaborateur
+                    </button>
+                </Link>
+            </div>
             <div className="max-w-md mx-auto bg-white p-8 shadow-md rounded-lg">
                 <h2 className="text-2xl font-bold mb-6 text-center">Créer un Ticket</h2>
+
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">
                         <label className="block text-gray-700">Numéro du Ticket</label>

@@ -2,14 +2,30 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsDoc = require('swagger-jsdoc');
+const { sendDesktopNotification } = require('./utils/notification');
+const { client } = require("./Discord/bot"); // ✅ Import du client Discord
+const { checkForAlerts } = require('./controllers/notifController'); // ✅ Import de la vérification des alertes
+const shinkenRoutes = require('./routes/shinkenRoute'); // ✅ Importe la route
 
-// Initialiser l'application Express
+
+// Importation des routes
+const collaborateurRoutes = require('./routes/collabRoute');
+const ticketRoutes = require('./routes/ticketRoute');
+const closedRoutes = require('./routes/closedRoute');
+const notifRoutes = require('./routes/notifRoute');
+
 const app = express();
-const PORT = 3000;
+const PORT = 5000;
 
 // Middleware
-app.use(cors()); // Pour permettre les requêtes cross-origin
-app.use(bodyParser.json()); // Pour parser le JSON dans les requêtes
+app.use(cors());
+app.use(bodyParser.json());
+
+process.env.TZ = "Europe/Paris"; // ✅ Force l'heure française pour tout le backend
+console.log("🕒 Fuseau horaire du serveur :", process.env.TZ);
+
 
 // Connexion à MongoDB
 mongoose.connect('mongodb://localhost:27017/CDS', {
@@ -17,95 +33,52 @@ mongoose.connect('mongodb://localhost:27017/CDS', {
     useUnifiedTopology: true,
 }).then(() => {
     console.log('Connecté à MongoDB');
+    // 🔹 Vérifier les alertes immédiatement après la connexion
+    setTimeout(() => {
+        checkForAlerts(client);
+    }, 5000); // ✅ Attendre 5 secondes pour s'assurer que le bot est bien connecté        
+    // 🔹 Vérifier les alertes toutes les minutes
+    // ✅ Vérification des alertes toutes les 15 minutes (900 000 ms)
+    setInterval(() => {
+        checkForAlerts(client);
+    }, 900000);
 }).catch((error) => {
     console.error('Erreur de connexion à MongoDB:', error);
 });
 
-// Modèle Mongoose pour les tickets
-const ticketSchema = new mongoose.Schema({
-    numeroTicket: { type: String, required: true },
-    priorite: { type: Number, required: true },
-    sujet: { type: String, required: true },
-    description: { type: String, required: true },
-    beneficiaire: { type: String, required: true },
-    dateEmission: { type: Date, required: true },
-});
-  
-const Ticket = mongoose.model('Ticket', ticketSchema);
+// --- CONFIGURATION SWAGGER ---
+const swaggerOptions = {
+    definition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'API Documentation',
+            version: '1.0.0',
+            description: 'Documentation complète des endpoints de l\'API',
+        },
+        servers: [
+            {
+                url: 'http://localhost:5000/api',
+                description: 'Serveur local',
+            },
+        ],
+    },
+    apis: ['./src/routes/*.js'], // Met à jour pour inclure le bon chemin
+};
 
-// Route pour récupérer les tickets
-app.get('/api/tickets', async (req, res) => {
-    try {
-        const tickets = await Ticket.find();
-        res.json(tickets);
-    } catch (error) {
-        res.status(500).json({ message: 'Erreur lors de la récupération des tickets', error });
-    }
-});
 
-// Route pour ajouter un ticket
-app.post('/api/tickets', async (req, res) => {
-    const { numeroTicket, priorite, sujet, beneficiaire, description } = req.body;
-  
-    if (!numeroTicket || !priorite || !sujet || !beneficiaire || !description) {
-        return res.status(400).json({ message: 'Tous les champs sont requis' });
-    }
-  
-    try {
-        const newTicket = new Ticket({
-            numeroTicket,
-            priorite,
-            sujet,
-            beneficiaire,
-            description,
-            dateEmission: new Date(),
-        });
-  
-        await newTicket.save();
-        res.status(201).json({ message: 'Ticket ajouté avec succès' });
-    } catch (error) {
-        res.status(500).json({ message: 'Erreur lors de l\'ajout du ticket', error });
-    }
-});
+const swaggerDocs = swaggerJsDoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-// Route pour mettre à jour un ticket
-app.put('/api/tickets/:id', async (req, res) => {
-    const { id } = req.params;
-    const { numeroTicket, priorite, sujet, beneficiaire, description } = req.body;
-
-    try {
-        const updatedTicket = await Ticket.findByIdAndUpdate(
-            id,
-            { numeroTicket, priorite, sujet, beneficiaire, description },
-            { new: true, runValidators: true } // Retourne le ticket mis à jour
-        );
-
-        if (!updatedTicket) {
-            return res.status(404).json({ message: 'Ticket non trouvé' });
-        }
-
-        res.json({ message: 'Ticket mis à jour avec succès', ticket: updatedTicket });
-    } catch (error) {
-        res.status(500).json({ message: 'Erreur lors de la mise à jour du ticket', error });
-    }
-});
-
-app.delete('/api/tickets/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        const ticket = await Ticket.findByIdAndDelete(id);
-        if (!ticket) {
-            return res.status(404).send({ message: "Ticket non trouvé" });
-        }
-        res.send({ message: "Ticket supprimé avec succès" });
-    } catch (error) {
-        res.status(500).send({ message: "Erreur lors de la suppression du ticket" });
-    }
-});
-
+// --- ROUTES API ---
+app.use('/api', ticketRoutes); // Routes liées aux tickets
+app.use('/api', collaborateurRoutes); // Routes liées aux collaborateurs
+app.use('/api', closedRoutes); // Routes liées aux tickets fermés
+app.use('/api', notifRoutes); // Nouvelle route pour les notifications
+app.use('/api/shinken', shinkenRoutes); // ✅ Ajoute la route à l'API
 
 
 // Démarrer le serveur
 app.listen(PORT, () => {
     console.log(`Serveur en cours d'exécution sur http://localhost:${PORT}`);
+    console.log(`Documentation Swagger : http://localhost:${PORT}/api-docs`);
 });
