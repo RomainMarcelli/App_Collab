@@ -9,7 +9,8 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMessageReactions // ✅ Ajouté pour écouter les réactions
     ]
 });
 
@@ -86,6 +87,39 @@ client.on("messageCreate", async (message) => {
     }
 });
 
+
+client.on("messageReactionAdd", async (reaction, user) => {
+    if (user.bot) return; // Ignore les réactions des bots
+
+    // Vérifie que l'emoji est bien 👍
+    if (reaction.emoji.name === "👍") {
+        console.log(`✅ Réaction ajoutée par ${user.username} sur le message: ${reaction.emoji.name}`);
+
+        // Extraire le numéro du ticket depuis le message
+        const match = reaction.message.content.match(/[IS]\d{6}_\d{3}/);
+
+        if (!match) {
+            console.log("❌ Aucun numéro de ticket trouvé dans le message.");
+            return;
+        }
+
+        const ticketNumber = match[0]; // Premier groupe trouvé = numéro de ticket
+        console.log(`⚡ Déclenchement de la suppression du ticket pour ${ticketNumber}`);
+
+        try {
+            // Supprime le ticket dans MongoDB
+            const deletedTicket = await Notif.findOneAndDelete({ ticketNumber });
+
+            if (!deletedTicket) {
+                console.log(`❌ Ticket ${ticketNumber} introuvable en BDD.`);
+                return;
+            }
+        } catch (error) {
+            console.error("❌ Erreur lors de la suppression du ticket:", error);
+            reaction.message.reply("❌ Une erreur s'est produite lors de la suppression du ticket.");
+        }
+    }
+});
 
 // ✅ Connexion du bot avec le token
 client.login(process.env.DISCORD_TOKEN).catch(err => {
