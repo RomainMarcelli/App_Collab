@@ -12,7 +12,16 @@ export default function TicketForm() {
     const [shinkenTicketCount, setShinkenTicketCount] = useState(1);
     const [shinkenTicketNumbers, setShinkenTicketNumbers] = useState([""]); // Stocke les tickets
     const [showModal, setShowModal] = useState(false);
+    const [showForm, setShowForm] = useState(true); // ✅ État pour afficher/masquer le formulaire
     const [modalMessage, setModalMessage] = useState("");
+    const [filterPriority, setFilterPriority] = useState("");
+    const [filterType, setFilterType] = useState("");
+    const [isSticky, setIsSticky] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const filterRef = useRef(null);
+    const placeholderRef = useRef(null);
+
+
 
     let originalTitle = document.title;
     const alertIntervalRef = useRef(null); // ✅ Utilisation de useRef pour éviter des bugs avec setInterval
@@ -66,6 +75,20 @@ export default function TicketForm() {
         fetchTickets();
         const interval = setInterval(fetchTickets, 30000); // ✅ Rafraîchit toutes les 30 sec
         return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (filterRef.current && placeholderRef.current) {
+                const rect = placeholderRef.current.getBoundingClientRect();
+                setIsSticky(rect.top <= 0);
+            }
+        };
+
+        window.addEventListener("scroll", handleScroll);
+        return () => {
+            window.removeEventListener("scroll", handleScroll);
+        };
     }, []);
 
     // ✅ Afficher une notification stylée + popup
@@ -238,163 +261,185 @@ export default function TicketForm() {
         }
     };
 
+    const filteredTickets = tickets.filter(ticket => {
+        return (
+            (filterPriority ? ticket.priority === filterPriority : true) &&
+            (filterType ? ticket.ticketNumber.startsWith(filterType) : true) &&
+            (searchTerm ? ticket.ticketNumber.includes(searchTerm) : true)
+        );
+    });
+
+
     return (
         <>
             <Navbar />
             <ToastContainer /> {/* ✅ Conteneur pour les notifications */}
-            <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
-                <h2 className="text-xl font-semibold mb-4">Créer un Ticket</h2>
-                {/* <form onSubmit={handleSubmit}>
-                    <div className="mb-4">
-                        <label className="block text-gray-700">Numéro du Ticket</label>
-                        <input
-                            type="text"
-                            value={ticketNumber}
-                            onChange={(e) => setTicketNumber(e.target.value)}
-                            className="w-full p-2 border rounded-lg"
-                            required
-                        />
-                    </div>
-                    <div className="mb-4">
-                        <label className="block text-gray-700">Priorité</label>
-                        <select
-                            value={priority}
-                            onChange={(e) => setPriority(e.target.value)}
-                            className="w-full p-2 border rounded-lg"
-                        >
-                            {[1, 2, 3, 4, 5].map((num) => (
-                                <option key={num} value={num}>{num}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="mb-4">
-                        <label className="block text-gray-700">Date de création du Ticket</label>
-                        <input
-                            type="datetime-local"
-                            value={createdAt}
-                            onChange={(e) => setCreatedAt(e.target.value)}
-                            className="w-full p-2 border rounded-lg"
-                        />
-                    </div>
-                    <button
-                        type="submit"
-                        className="w-full bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600"
-                    >
-                        Soumettre
-                    </button>
-                </form> */}
-                {!showShinkenForm ? (
-                    <div>
-                        {/* <h2 className="text-xl font-semibold mb-4">Créer un Ticket</h2> */}
-                        <form onSubmit={handleSubmit}>
-                            <div className="mb-4">
-                                <label className="block text-gray-700">Numéro du Ticket</label>
-                                <input
-                                    type="text"
-                                    value={ticketNumber}
-                                    onChange={(e) => setTicketNumber(e.target.value)}
-                                    className="w-full p-2 border rounded-lg"
-                                    required
-                                />
-                            </div>
-                            <div className="mb-4">
-                                <label className="block text-gray-700">Priorité</label>
+            <button
+                onClick={() => setShowForm(!showForm)}
+                className="fixed top-10 right-10 z-50 bg-gradient-to-r mt-5 from-blue-500 to-indigo-600 text-white font-semibold px-6 py-3 rounded-full shadow-lg hover:from-indigo-600 hover:to-blue-500 hover:shadow-xl transition-all duration-300 ease-in-out transform hover:scale-110"
+            >
+                {showForm ? "Masquer ⬆️" : "Afficher ⬇️"}
+            </button>
+            {showForm && (
+                <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
+                    {/* <h2 className="text-xl font-semibold mb-4">Créer un Ticket</h2> */}
+
+                    {!showShinkenForm ? (
+                        <div>
+                            <h2 className="text-xl font-semibold mb-4">Créer un Ticket</h2>
+                            <form onSubmit={handleSubmit}>
+                                <div className="mb-4">
+                                    <label className="block text-gray-700">Numéro du Ticket</label>
+                                    <input
+                                        type="text"
+                                        value={ticketNumber}
+                                        onChange={(e) => setTicketNumber(e.target.value)}
+                                        className="w-full p-2 border rounded-lg"
+                                        required
+                                    />
+                                </div>
+                                <div className="mb-4">
+                                    <label className="block text-gray-700">Priorité</label>
+                                    <select
+                                        value={priority}
+                                        onChange={(e) => setPriority(e.target.value)}
+                                        className="w-full p-2 border rounded-lg"
+                                    >
+                                        {[1, 2, 3, 4, 5].map((num) => (
+                                            <option key={num} value={num}>{num}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="mb-4">
+                                    <label className="block text-gray-700">Date de création du Ticket</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={createdAt}
+                                        onChange={(e) => setCreatedAt(e.target.value)}
+                                        className="w-full p-2 border rounded-lg"
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    className="w-full bg-blue-500 text-white font-semibold p-3 rounded-lg shadow-md hover:bg-blue-600 hover:shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105"
+                                >
+                                    Soumettre
+                                </button>
+                            </form>
+
+                            <button
+                                onClick={() => setShowShinkenForm(true)}
+                                className="w-full bg-gradient-to-r from-gray-800 to-black mt-5 text-white font-semibold p-3 rounded-lg shadow-md hover:from-black hover:to-gray-900 hover:shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105"
+                            >
+                                Shinken
+                            </button>
+                        </div>
+
+                    ) : (
+                        <div className="mt-4 p-4 bg-white rounded-lg shadow-md border border-gray-300">
+                            <h2 className="text-lg font-bold text-gray-700">Saisir les Shinkens</h2>
+
+                            {/* Sélecteur du nombre de tickets */}
+                            <div className="mb-3">
+                                <label className="block text-gray-700 font-semibold">Nombre de tickets :</label>
                                 <select
-                                    value={priority}
-                                    onChange={(e) => setPriority(e.target.value)}
+                                    value={shinkenTicketCount}
+                                    onChange={(e) => handleShinkenCountChange(e.target.value)}
                                     className="w-full p-2 border rounded-lg"
                                 >
-                                    {[1, 2, 3, 4, 5].map((num) => (
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                                         <option key={num} value={num}>{num}</option>
                                     ))}
                                 </select>
                             </div>
-                            <div className="mb-4">
-                                <label className="block text-gray-700">Date de création du Ticket</label>
-                                <input
-                                    type="datetime-local"
-                                    value={createdAt}
-                                    onChange={(e) => setCreatedAt(e.target.value)}
-                                    className="w-full p-2 border rounded-lg"
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                className="w-full bg-blue-500 text-white font-semibold p-3 rounded-lg shadow-md hover:bg-blue-600 hover:shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105"
-                            >
-                                Soumettre
-                            </button>
-                        </form>
 
-                        <button
-                            onClick={() => setShowShinkenForm(true)}
-                            className="w-full bg-gradient-to-r from-gray-800 to-black mt-5 text-white font-semibold p-3 rounded-lg shadow-md hover:from-black hover:to-gray-900 hover:shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105"
+                            {/* Champs pour entrer les numéros de tickets */}
+                            {shinkenTicketNumbers.map((ticket, index) => (
+                                <div key={index} className="mb-3">
+                                    <input
+                                        type="text"
+                                        value={ticket}
+                                        onChange={(e) => handleShinkenTicketChange(index, e.target.value)}
+                                        className="w-full p-2 border rounded-lg"
+                                        placeholder={`Numéro du ticket ${index + 1}`}
+                                        required
+                                    />
+                                </div>
+                            ))}
+
+                            <div className="flex justify-between mt-3">
+                                <button
+                                    onClick={handleShinkenSubmit}
+                                    className="w-full bg-gradient-to-r mr-3 from-green-500 to-green-600 text-white font-semibold p-3 rounded-lg shadow-md hover:from-green-600 hover:to-green-700 transition-all duration-300 ease-in-out transform hover:scale-105"
+                                >
+                                    Valider
+                                </button>
+
+                                <button
+                                    onClick={() => setShowShinkenForm(false)}
+                                    className="w-full bg-gradient-to-r from-gray-500 to-gray-600 text-white font-semibold p-3 rounded-lg shadow-md hover:from-gray-600 hover:to-gray-700 transition-all duration-300 ease-in-out transform hover:scale-105"
+                                >
+                                    Annuler
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+            <div ref={placeholderRef} className="h-0"></div>
+            <div ref={filterRef} className={`w-full bg-white p-4 border-b border-gray-200 transition-all duration-300 ${isSticky ? 'fixed top-0 left-0 z-40 shadow-md' : 'relative'}`}>
+                <div className="max-w-2xl mx-auto">
+                    <h2 className="text-xl font-semibold mb-4">Filtres</h2>
+                    <div className="flex gap-4">
+                        {/* Filtrer par priorité */}
+                        <select
+                            value={filterPriority}
+                            onChange={(e) => setFilterPriority(e.target.value)}
+                            className="p-2 border rounded-lg w-1/3"
                         >
-                            Shinken
-                        </button>
+                            <option value="">Toutes priorités</option>
+                            {[1, 2, 3, 4, 5].map(num => (
+                                <option key={num} value={num}>{num}</option>
+                            ))}
+                        </select>
+
+                        {/* Barre de recherche */}
+                        <input
+                            type="text"
+                            placeholder="Rechercher un ticket..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="p-2 border rounded-lg w-1/3"
+                        />
+
+                        {/* Filtrer par type (I ou P) */}
+                        <select
+                            value={filterType}
+                            onChange={(e) => setFilterType(e.target.value)}
+                            className="p-2 border rounded-lg w-1/3"
+                        >
+                            <option value="">Tous types</option>
+                            <option value="I">Commence par I</option>
+                            <option value="S">Commence par S</option>
+                        </select>
+
+
                     </div>
-                ) : (
-                    <div className="mt-4 p-4 bg-white rounded-lg shadow-md border border-gray-300">
-                        <h2 className="text-lg font-bold text-gray-700">Saisir les Shinkens</h2>
-
-                        {/* Sélecteur du nombre de tickets */}
-                        <div className="mb-3">
-                            <label className="block text-gray-700 font-semibold">Nombre de tickets :</label>
-                            <select
-                                value={shinkenTicketCount}
-                                onChange={(e) => handleShinkenCountChange(e.target.value)}
-                                className="w-full p-2 border rounded-lg"
-                            >
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                                    <option key={num} value={num}>{num}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Champs pour entrer les numéros de tickets */}
-                        {shinkenTicketNumbers.map((ticket, index) => (
-                            <div key={index} className="mb-3">
-                                <input
-                                    type="text"
-                                    value={ticket}
-                                    onChange={(e) => handleShinkenTicketChange(index, e.target.value)}
-                                    className="w-full p-2 border rounded-lg"
-                                    placeholder={`Numéro du ticket ${index + 1}`}
-                                    required
-                                />
-                            </div>
-                        ))}
-
-                        <div className="flex justify-between mt-3">
-                            <button
-                                onClick={handleShinkenSubmit}
-                                className="w-full bg-gradient-to-r mr-3 from-green-500 to-green-600 text-white font-semibold p-3 rounded-lg shadow-md hover:from-green-600 hover:to-green-700 transition-all duration-300 ease-in-out transform hover:scale-105"
-                            >
-                                Valider
-                            </button>
-
-                            <button
-                                onClick={() => setShowShinkenForm(false)}
-                                className="w-full bg-gradient-to-r from-gray-500 to-gray-600 text-white font-semibold p-3 rounded-lg shadow-md hover:from-gray-600 hover:to-gray-700 transition-all duration-300 ease-in-out transform hover:scale-105"
-                            >
-                                Annuler
-                            </button>
-                        </div>
-                    </div>
-                )}
+                </div>
             </div>
+
 
             {/* ✅ Liste des tickets */}
             <div className="max-w-2xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg border border-gray-200">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-                    📋 Liste des Tickets ({tickets.length})
+                    📋 Liste des Tickets ({filteredTickets.length})
                 </h2>
 
-                {tickets.length === 0 ? (
+                {filteredTickets.length === 0 ? (
                     <p className="text-gray-500 text-center">Aucun ticket enregistré.</p>
                 ) : (
                     <ul className="space-y-4">
-                        {tickets
+                        {filteredTickets
                             .sort((a, b) => new Date(a.deadline) - new Date(b.deadline)) // ✅ Trie par deadline la plus récente
                             .map((ticket) => (
                                 <li
