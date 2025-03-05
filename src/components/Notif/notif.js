@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import Navbar from "../navbar";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { FaArrowUp, FaArrowDown } from "react-icons/fa";
 
 export default function TicketForm() {
     const [ticketNumber, setTicketNumber] = useState("");
@@ -274,12 +275,21 @@ export default function TicketForm() {
         <>
             <Navbar />
             <ToastContainer /> {/* ✅ Conteneur pour les notifications */}
-            <button
-                onClick={() => setShowForm(!showForm)}
-                className="fixed top-10 right-10 z-50 bg-gradient-to-r mt-5 from-blue-500 to-indigo-600 text-white font-semibold px-6 py-3 rounded-full shadow-lg hover:from-indigo-600 hover:to-blue-500 hover:shadow-xl transition-all duration-300 ease-in-out transform hover:scale-110"
-            >
-                {showForm ? "Masquer ⬆️" : "Afficher ⬇️"}
-            </button>
+            {/* Flèches pour naviguer en haut et en bas de la page */}
+            <div className="fixed bottom-5 right-5 flex flex-col gap-3 z-50">
+                <button 
+                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                    className="bg-blue-500 text-white w-12 h-12 flex items-center justify-center rounded-full shadow-lg hover:bg-blue-600 transition-all duration-300 ease-in-out transform hover:scale-110"
+                >
+                    <FaArrowUp size={20} />
+                </button>
+                <button 
+                    onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
+                    className="bg-blue-500 text-white w-12 h-12 flex items-center justify-center rounded-full shadow-lg hover:bg-blue-600 transition-all duration-300 ease-in-out transform hover:scale-110"
+                >
+                    <FaArrowDown size={20} />
+                </button>
+            </div>
             {showForm && (
                 <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
                     {/* <h2 className="text-xl font-semibold mb-4">Créer un Ticket</h2> */}
