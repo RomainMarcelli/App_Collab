@@ -1,47 +1,43 @@
-# Gestion de Tickets - Application Web
+# Application de Gestion des Tickets & Notifications  
 
 ## Description
 
-Cette application est une solution complète de gestion de tickets, permettant de créer, modifier, supprimer et fermer des tickets. Elle inclut également une gestion des tickets fermés et des fonctionnalités d'affectation à des collaborateurs.
+Cette application permet de gérer des **tickets** avec des priorités et de notifier les utilisateurs via **Discord et notifications desktop** lorsqu’un ticket atteint sa **deadline**.  
+Elle inclut également un **système de filtres collants**, des boutons de navigation rapide et un suivi en temps réel des tickets.
 
-Le projet est conçu en React pour le frontend et utilise Node.js, Express et MongoDB pour le backend.
 
 ---
 
 ## Fonctionnalités
 
-- **Création de tickets :** Ajoutez de nouveaux tickets avec des informations comme la priorité, le sujet, la description, le bénéficiaire, et la date d'émission.
-- **Modification de tickets :** Modifiez les informations des tickets existants.
-- **Clôture de tickets :** Déplacez les tickets fermés dans une table dédiée.
-- **Réouverture de tickets :** Récupérez un ticket depuis la table des tickets fermés.
-- **Suppression de tickets :** Supprimez définitivement les tickets.
-- **Gestion des collaborateurs :** Affectez des tickets à des collaborateurs spécifiques.
+✔ **Création de tickets** avec une priorité et une date de création  
+✔ **Calcul intelligent des deadlines** basé sur les priorités et les horaires de travail  
+✔ **Notifications automatiques** (Desktop + Discord) lorsque la deadline approche  
+✔ **Filtres collants** pour toujours voir les critères de recherche  
+✔ **Boutons de navigation rapide** (flèches pour remonter et descendre la page)  
+✔ **Suppression de tickets** directement depuis l’interface  
 
 ---
 
 ## Technologies utilisées
 
-### Frontend
-- **React.js** : Framework JavaScript pour la création d'interfaces utilisateur.
-- **TailwindCSS** : Framework CSS pour le design.
-
-### Backend
-- **Node.js** : Serveur JavaScript.
-- **Express.js** : Framework web minimaliste pour Node.js.
-- **MongoDB** : Base de données NoSQL.
+- **Frontend** : React, Tailwind CSS  
+- **Backend** : Node.js, Express  
+- **Base de données** : MongoDB  
+- **Notifications** : Notifications Web API, Discord Bot  
 
 ---
 
 ## Installation et configuration
 
 ### Prérequis
-Assurez-vous que les outils suivants sont installés sur votre machine :
-- [Node.js](https://nodejs.org/) (v14 ou plus)
-- [MongoDB](https://www.mongodb.com/) (service local ou distant)
+- **Node.js** installé  
+- **MongoDB** installé ou accessible via un service cloud  
+- Un **serveur Discord** avec un bot configuré  
 
 ### Étapes d'installation
 
 1. Clonez le dépôt :
    ```bash
-   git clone https://github.com/votre-utilisateur/votre-repo.git
+   git clone https://github.com/RomainMarcelli/App_Collab.git
    cd votre-repo

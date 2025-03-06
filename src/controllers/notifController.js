@@ -8,41 +8,47 @@ const { addBusinessHours, addBusinessDays } = require('../utils/timeUtils');
 
 // Fonction pour calculer la deadline en fonction de la priorité
 const calculateDeadline = (priority, createdAt = null) => {
-    const now = createdAt ? new Date(createdAt) : new Date(); // ✅ Prend `createdAt` si fourni, sinon `new Date()`
+    const now = createdAt ? new Date(createdAt) : new Date();
+    const businessStartHour = 9;
 
+    if (priority === "4" || priority === "5") {
+        let adjustedCreatedAt = new Date(createdAt);
+        if (adjustedCreatedAt.getHours() >= 18 || adjustedCreatedAt.getHours() < businessStartHour) {
+            adjustedCreatedAt.setHours(businessStartHour, 0, 0, 0); // Ajuste au début de la journée de travail
+        }
+        return addBusinessDays(adjustedCreatedAt, priority === "4" ? 3 : 5);
+    }
+    
     switch (priority) {
-        case "1": return new Date(now.getTime() + 1 * 60 * 60 * 1000); // P1 = 1H
-        case "2": return new Date(now.getTime() + 2 * 60 * 60 * 1000); // P2 = 2H
-        case "3": return addBusinessHours(now, 8); // ✅ P3 = 8H avec business hours
-        case "4": return addBusinessDays(now, 3); // ✅ P4 = 3 jours complets
-        case "5": return addBusinessDays(now, 5); // ✅ P5 = 5 jours complets
+        case "1": return new Date(now.getTime() + 1 * 60 * 60 * 1000);
+        case "2": return new Date(now.getTime() + 2 * 60 * 60 * 1000);
+        case "3": return addBusinessHours(now, 8);
         default: return now;
     }
 };
 
 const calculateAlertTime = (priority, createdAt) => {
+    const businessStartHour = 9;
     let alertOffset;
-    let useBusinessDays = false; // ✅ Détermine si on compte en jours ouvrés
+    let useBusinessDays = false;
+    
+    if (priority === "4" || priority === "5") {
+        let adjustedCreatedAt = new Date(createdAt);
+        if (adjustedCreatedAt.getHours() >= 18 || adjustedCreatedAt.getHours() < businessStartHour) {
+            adjustedCreatedAt.setHours(businessStartHour, 0, 0, 0);
+        }
+        return addBusinessDays(adjustedCreatedAt, priority === "4" ? 2 : 4);
+    }
 
     switch (priority) {
-        case "1": alertOffset = 10 / 3600; break;  // ✅ P1 = 10 secondes après `createdAt`
-        case "2": alertOffset = 15 / 60; break;   // ✅ P2 = 15 minutes après `createdAt`
-        case "3": alertOffset = 5; break;         // ✅ P3 = 4 heures après `createdAt`
-        case "4": alertOffset = 2; useBusinessDays = true; break; // ✅ P4 = 2 jours après `createdAt`
-        case "5": alertOffset = 4; useBusinessDays = true; break; // ✅ P5 = 4 jours après `createdAt`
+        case "1": alertOffset = 10 / 3600; break;
+        case "2": alertOffset = 15 / 60; break;
+        case "3": alertOffset = 5; break;
         default: alertOffset = 0;
     }
-
-    if (useBusinessDays) {
-        // ✅ Si P4 ou P5, ajouter des jours ouvrés à `createdAt`
-        const finalAlertTime = addBusinessDays(new Date(createdAt), alertOffset);
-        return finalAlertTime;
-    } else {
-        // ✅ Si P1, P2 ou P3, ajouter des heures ouvrées à `createdAt`
-        const finalAlertTime = addBusinessHours(new Date(createdAt), alertOffset);
-        return finalAlertTime;
-    }
+    return addBusinessHours(new Date(createdAt), alertOffset);
 };
+
 
 exports.createNotifFromRequest = async (req, res) => {
     try {
@@ -147,3 +153,43 @@ exports.deleteNotif = async (req, res) => {
         res.status(500).json({ message: "Erreur lors de la suppression du ticket", error });
     }
 };
+
+exports.updateNotifTime = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { newCreatedAt } = req.body;
+
+        if (!newCreatedAt) {
+            return res.status(400).json({ message: "La nouvelle heure est requise !" });
+        }
+
+        // ✅ Vérifie que le ticket existe
+        const notif = await Notif.findById(id);
+        if (!notif) {
+            return res.status(404).json({ message: "Notification non trouvée" });
+        }
+
+        // ✅ Récupérer la priorité existante
+        const priority = notif.priority;
+
+        // ✅ Met à jour `createdAt` et recalculer `deadline` et `alertTime`
+        notif.createdAt = new Date(newCreatedAt);
+        notif.deadline = calculateDeadline(priority, notif.createdAt);
+        notif.alertTime = calculateAlertTime(priority, notif.createdAt);
+
+        const updatedNotif = await notif.save(); // ✅ Sauvegarde dans MongoDB
+
+        if (!updatedNotif) {
+            return res.status(500).json({ message: "Erreur lors de la mise à jour en base de données" });
+        }
+
+        res.status(200).json({
+            message: "Notification mise à jour avec succès !",
+            updatedNotif
+        });
+    } catch (error) {
+        console.error("❌ Erreur lors de la mise à jour de l'heure du ticket :", error);
+        res.status(500).json({ message: "Erreur interne du serveur", error });
+    }
+};
+
