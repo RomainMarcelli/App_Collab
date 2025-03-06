@@ -151,34 +151,34 @@ export default function TicketForm() {
                 },
                 body: JSON.stringify({ newCreatedAt: new Date(newCreatedAt).toISOString() }),
             });
-    
+
             if (!response.ok) {
                 toast.error("❌ Erreur lors de la mise à jour.");
                 return;
             }
-    
+
             const data = await response.json();
-            
+
             if (!data.updatedNotif) {
                 toast.error("❌ Erreur : La réponse de l'API ne contient pas la mise à jour.");
                 return;
             }
-    
+
             toast.success("✔ Ticket mis à jour !");
-            
+
             // ✅ Met à jour l'affichage avec la version mise à jour de la BDD
             setTickets((prevTickets) =>
                 prevTickets.map((t) =>
                     t._id === ticketId ? { ...t, createdAt: data.updatedNotif.createdAt } : t
                 )
             );
-    
+
             setEditingTicketId(null);
         } catch (error) {
             console.error("❌ Erreur:", error);
             toast.error("❌ Impossible de modifier le ticket !");
         }
-    };     
+    };
 
     // Fonction pour Supprimer un ticket
     const handleDelete = async (ticketId) => {
@@ -510,8 +510,8 @@ export default function TicketForm() {
                         ${ticket.priority === "5" ? "border-green-500 bg-green-50" : ""}`
                                     }
                                 >
-                                    <div className="flex justify-between items-center">
-                                        <div>
+                                    <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
+                                        <div className="flex-1">
                                             <p className="text-lg font-semibold text-gray-800">
                                                 🏷️ <strong>Ticket :</strong> {ticket.ticketNumber}
                                             </p>
@@ -521,30 +521,30 @@ export default function TicketForm() {
                                             <p className="text-gray-700"><strong>🔔 Alerte prévue :</strong> {new Date(ticket.alertTime).toLocaleString()}</p>
                                         </div>
 
-                                        <div className="flex flex-col items-end gap-2">
+                                        <div className="flex flex-col items-center gap-3">
                                             {/* ✅ Bouton Modifier */}
                                             <button
                                                 onClick={() => {
-                                                    setEditingTicketId(ticket._id);
-                                                    setNewCreatedAt(formatDateForInput(ticket.createdAt)); // ✅ Affiche la date actuelle
+                                                    setEditingTicketId(editingTicketId === ticket._id ? null : ticket._id); // ✅ Ouvre/ferme le formulaire
+                                                    setNewCreatedAt(formatDateForInput(ticket.createdAt));
                                                 }}
-                                                className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-all duration-300 flex items-center gap-1"
+                                                className="flex items-center bg-yellow-500 text-white px-5 py-2 rounded-lg hover:bg-yellow-600 transition-all duration-300 shadow-md"
                                             >
-                                                🖊️ Modifier
+                                                {editingTicketId === ticket._id ? "Annuler" : "Modifier"}
                                             </button>
 
                                             {/* ✅ Formulaire de modification */}
                                             {editingTicketId === ticket._id && (
-                                                <div className="mt-2">
+                                                <div className="mt-2 p-4 bg-gray-100 rounded-lg shadow-inner flex flex-col items-center w-full">
                                                     <input
                                                         type="datetime-local"
                                                         value={newCreatedAt}
                                                         onChange={(e) => setNewCreatedAt(e.target.value)}
-                                                        className="border p-2 rounded-lg w-full"
+                                                        className="border p-2 rounded-lg w-full focus:ring focus:ring-blue-300"
                                                     />
                                                     <button
                                                         onClick={() => handleUpdate(ticket._id)}
-                                                        className="mt-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all duration-300"
+                                                        className="mt-3 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all duration-300 shadow-md w-full"
                                                     >
                                                         Enregistrer
                                                     </button>
@@ -554,7 +554,7 @@ export default function TicketForm() {
                                             {/* ✅ Bouton Supprimer */}
                                             <button
                                                 onClick={() => handleDelete(ticket._id)}
-                                                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-300"
+                                                className="bg-red-500 text-white px-5 py-2 rounded-lg hover:bg-red-700 transition-all duration-300 shadow-md"
                                             >
                                                 Supprimer
                                             </button>
