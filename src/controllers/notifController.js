@@ -153,3 +153,43 @@ exports.deleteNotif = async (req, res) => {
         res.status(500).json({ message: "Erreur lors de la suppression du ticket", error });
     }
 };
+
+exports.updateNotifTime = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { newCreatedAt } = req.body;
+
+        if (!newCreatedAt) {
+            return res.status(400).json({ message: "La nouvelle heure est requise !" });
+        }
+
+        // ✅ Vérifie que le ticket existe
+        const notif = await Notif.findById(id);
+        if (!notif) {
+            return res.status(404).json({ message: "Notification non trouvée" });
+        }
+
+        // ✅ Récupérer la priorité existante
+        const priority = notif.priority;
+
+        // ✅ Met à jour `createdAt` et recalculer `deadline` et `alertTime`
+        notif.createdAt = new Date(newCreatedAt);
+        notif.deadline = calculateDeadline(priority, notif.createdAt);
+        notif.alertTime = calculateAlertTime(priority, notif.createdAt);
+
+        const updatedNotif = await notif.save(); // ✅ Sauvegarde dans MongoDB
+
+        if (!updatedNotif) {
+            return res.status(500).json({ message: "Erreur lors de la mise à jour en base de données" });
+        }
+
+        res.status(200).json({
+            message: "Notification mise à jour avec succès !",
+            updatedNotif
+        });
+    } catch (error) {
+        console.error("❌ Erreur lors de la mise à jour de l'heure du ticket :", error);
+        res.status(500).json({ message: "Erreur interne du serveur", error });
+    }
+};
+

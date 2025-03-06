@@ -19,6 +19,8 @@ export default function TicketForm() {
     const [filterType, setFilterType] = useState("");
     const [isSticky, setIsSticky] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const [editingTicketId, setEditingTicketId] = useState(null);
+    const [newCreatedAt, setNewCreatedAt] = useState("");
     const filterRef = useRef(null);
     const placeholderRef = useRef(null);
 
@@ -131,6 +133,52 @@ export default function TicketForm() {
         alertIntervalRef.current = null;
         document.title = originalTitle;
     };
+
+    // ✅ Corrige le formatage pour afficher l'heure locale au lieu de UTC
+    const formatDateForInput = (dateString) => {
+        const date = new Date(dateString);
+        const offset = date.getTimezoneOffset() * 60000; // Décalage en millisecondes
+        const localDate = new Date(date - offset); // Appliquer le décalage
+        return localDate.toISOString().slice(0, 16); // Format YYYY-MM-DDTHH:MM en heure locale
+    };
+
+    const handleUpdate = async (ticketId) => {
+        try {
+            const response = await fetch(`http://localhost:5000/api/notif/${ticketId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ newCreatedAt: new Date(newCreatedAt).toISOString() }),
+            });
+    
+            if (!response.ok) {
+                toast.error("❌ Erreur lors de la mise à jour.");
+                return;
+            }
+    
+            const data = await response.json();
+            
+            if (!data.updatedNotif) {
+                toast.error("❌ Erreur : La réponse de l'API ne contient pas la mise à jour.");
+                return;
+            }
+    
+            toast.success("✔ Ticket mis à jour !");
+            
+            // ✅ Met à jour l'affichage avec la version mise à jour de la BDD
+            setTickets((prevTickets) =>
+                prevTickets.map((t) =>
+                    t._id === ticketId ? { ...t, createdAt: data.updatedNotif.createdAt } : t
+                )
+            );
+    
+            setEditingTicketId(null);
+        } catch (error) {
+            console.error("❌ Erreur:", error);
+            toast.error("❌ Impossible de modifier le ticket !");
+        }
+    };     
 
     // Fonction pour Supprimer un ticket
     const handleDelete = async (ticketId) => {
@@ -277,13 +325,13 @@ export default function TicketForm() {
             <ToastContainer /> {/* ✅ Conteneur pour les notifications */}
             {/* Flèches pour naviguer en haut et en bas de la page */}
             <div className="fixed bottom-5 right-5 flex flex-col gap-3 z-50">
-                <button 
+                <button
                     onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                     className="bg-blue-500 text-white w-12 h-12 flex items-center justify-center rounded-full shadow-lg hover:bg-blue-600 transition-all duration-300 ease-in-out transform hover:scale-110"
                 >
                     <FaArrowUp size={20} />
                 </button>
-                <button 
+                <button
                     onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
                     className="bg-blue-500 text-white w-12 h-12 flex items-center justify-center rounded-full shadow-lg hover:bg-blue-600 transition-all duration-300 ease-in-out transform hover:scale-110"
                 >
@@ -440,7 +488,7 @@ export default function TicketForm() {
 
 
             {/* ✅ Liste des tickets */}
-            <div className="max-w-2xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg border border-gray-200">
+            <div className="max-w-2xl mx-auto mt-10 mb-15 p-6 bg-white rounded-lg shadow-lg border border-gray-200">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
                     📋 Liste des Tickets ({filteredTickets.length})
                 </h2>
@@ -455,11 +503,11 @@ export default function TicketForm() {
                                 <li
                                     key={ticket._id}
                                     className={`p-4 rounded-lg shadow-md border-l-4 transition-all duration-300 transform hover:scale-105
-                            ${ticket.priority === "1" ? "border-red-500 bg-red-50" : ""}
-                            ${ticket.priority === "2" ? "border-orange-500 bg-orange-50" : ""}
-                            ${ticket.priority === "3" ? "border-yellow-500 bg-yellow-50" : ""}
-                            ${ticket.priority === "4" ? "border-blue-500 bg-blue-50" : ""}
-                            ${ticket.priority === "5" ? "border-green-500 bg-green-50" : ""}`
+                        ${ticket.priority === "1" ? "border-red-500 bg-red-50" : ""}
+                        ${ticket.priority === "2" ? "border-orange-500 bg-orange-50" : ""}
+                        ${ticket.priority === "3" ? "border-yellow-500 bg-yellow-50" : ""}
+                        ${ticket.priority === "4" ? "border-blue-500 bg-blue-50" : ""}
+                        ${ticket.priority === "5" ? "border-green-500 bg-green-50" : ""}`
                                     }
                                 >
                                     <div className="flex justify-between items-center">
@@ -472,12 +520,45 @@ export default function TicketForm() {
                                             <p className="text-gray-700 font-semibold"><strong>⏳ Deadline :</strong> {new Date(ticket.deadline).toLocaleString()}</p>
                                             <p className="text-gray-700"><strong>🔔 Alerte prévue :</strong> {new Date(ticket.alertTime).toLocaleString()}</p>
                                         </div>
-                                        <button
-                                            onClick={() => handleDelete(ticket._id)}
-                                            className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-300"
-                                        >
-                                            Supprimer
-                                        </button>
+
+                                        <div className="flex flex-col items-end gap-2">
+                                            {/* ✅ Bouton Modifier */}
+                                            <button
+                                                onClick={() => {
+                                                    setEditingTicketId(ticket._id);
+                                                    setNewCreatedAt(formatDateForInput(ticket.createdAt)); // ✅ Affiche la date actuelle
+                                                }}
+                                                className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-all duration-300 flex items-center gap-1"
+                                            >
+                                                🖊️ Modifier
+                                            </button>
+
+                                            {/* ✅ Formulaire de modification */}
+                                            {editingTicketId === ticket._id && (
+                                                <div className="mt-2">
+                                                    <input
+                                                        type="datetime-local"
+                                                        value={newCreatedAt}
+                                                        onChange={(e) => setNewCreatedAt(e.target.value)}
+                                                        className="border p-2 rounded-lg w-full"
+                                                    />
+                                                    <button
+                                                        onClick={() => handleUpdate(ticket._id)}
+                                                        className="mt-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all duration-300"
+                                                    >
+                                                        Enregistrer
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* ✅ Bouton Supprimer */}
+                                            <button
+                                                onClick={() => handleDelete(ticket._id)}
+                                                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-300"
+                                            >
+                                                Supprimer
+                                            </button>
+                                        </div>
                                     </div>
                                 </li>
                             ))}
