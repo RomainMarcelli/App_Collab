@@ -488,7 +488,7 @@ export default function TicketForm() {
 
 
             {/* ✅ Liste des tickets */}
-            <div className="max-w-2xl mx-auto mt-10 mb-[20px] p-6 bg-white rounded-lg shadow-lg border border-gray-200">
+            <div className="max-w-2xl mx-auto mt-10 mb-[20px] p-6  bg-white rounded-lg shadow-lg border border-gray-200">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
                     📋 Liste des Tickets ({filteredTickets.length})
                 </h2>
@@ -565,6 +565,7 @@ export default function TicketForm() {
                     </ul>
                 )}
             </div>
+            <div className="h-20"></div>
             {/* ✅ Popup plein écran */}
             {showModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center">
