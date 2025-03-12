@@ -2,7 +2,7 @@ const { Client } = require("discord.js");
 const Notif = require('../models/notifModel');
 const { sendDesktopNotification } = require('../utils/notification'); // ✅ Assure-toi d'importer la fonction
 const { addBusinessHours, addBusinessDays } = require('../utils/timeUtils');
-
+const DeletedNotif = require('../models/deletedNotifModel'); // ✅ Import du modèle des tickets supprimés
 
 // Fonction pour calculer la deadline en fonction de la priorité
 
@@ -193,3 +193,44 @@ exports.updateNotifTime = async (req, res) => {
     }
 };
 
+
+exports.deleteNotif = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // ✅ Vérifie si le ticket existe avant suppression
+        const notif = await Notif.findById(id);
+        if (!notif) {
+            return res.status(404).json({ message: "Notification non trouvée" });
+        }
+
+        // ✅ Stocke le ticket dans la collection des tickets supprimés
+        const deletedNotif = new DeletedNotif({
+            ticketNumber: notif.ticketNumber,
+            priority: notif.priority,
+            createdAt: notif.createdAt,
+            deadline: notif.deadline,
+            alertTime: notif.alertTime,
+            alertSent: notif.alertSent,
+            deletedAt: new Date() // ✅ Ajoute la date de suppression
+        });
+
+        await deletedNotif.save(); // ✅ Sauvegarde le ticket supprimé
+        await Notif.findByIdAndDelete(id); // ✅ Supprime le ticket de la collection principale
+
+        res.status(200).json({ message: "Ticket supprimé et archivé avec succès !" });
+    } catch (error) {
+        console.error("❌ Erreur lors de la suppression du ticket :", error);
+        res.status(500).json({ message: "Erreur interne du serveur", error });
+    }
+};
+
+// ✅ Ajout d'une route pour récupérer les tickets supprimés
+exports.getDeletedNotifs = async (req, res) => {
+    try {
+        const deletedNotifications = await DeletedNotif.find().sort({ deletedAt: -1 });
+        res.status(200).json(deletedNotifications);
+    } catch (error) {
+        res.status(500).json({ message: "Erreur lors de la récupération des notifications supprimées", error });
+    }
+};

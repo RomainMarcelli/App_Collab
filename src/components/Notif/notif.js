@@ -55,13 +55,13 @@ export default function TicketForm() {
                     }
                 });
             } catch (error) {
-                console.error("❌ Erreur lors de la récupération des notifications :", error);
+                console.error("Erreur lors de la récupération des notifications :", error);
             }
         };
 
         const interval = setInterval(checkAlerts, 30000);
         return () => clearInterval(interval);
-    }, []); // ❌ ERREUR : `showNotification` est utilisé mais absent du tableau des dépendances    
+    }, []); // ERREUR : `showNotification` est utilisé mais absent du tableau des dépendances    
 
     // ✅ Charger tous les tickets au chargement du composant
     useEffect(() => {
@@ -71,7 +71,7 @@ export default function TicketForm() {
                 const data = await response.json();
                 setTickets(data); // ✅ Met à jour l'état des tickets
             } catch (error) {
-                console.error("❌ Erreur lors de la récupération des tickets :", error);
+                console.error("Erreur lors de la récupération des tickets :", error);
             }
         };
 
@@ -153,14 +153,14 @@ export default function TicketForm() {
             });
 
             if (!response.ok) {
-                toast.error("❌ Erreur lors de la mise à jour.");
+                toast.error("Erreur lors de la mise à jour.");
                 return;
             }
 
             const data = await response.json();
 
             if (!data.updatedNotif) {
-                toast.error("❌ Erreur : La réponse de l'API ne contient pas la mise à jour.");
+                toast.error("Erreur : La réponse de l'API ne contient pas la mise à jour.");
                 return;
             }
 
@@ -175,8 +175,8 @@ export default function TicketForm() {
 
             setEditingTicketId(null);
         } catch (error) {
-            console.error("❌ Erreur:", error);
-            toast.error("❌ Impossible de modifier le ticket !");
+            console.error("Erreur:", error);
+            toast.error("Impossible de modifier le ticket !");
         }
     };
 
@@ -191,11 +191,11 @@ export default function TicketForm() {
                 toast.success("🗑️ Ticket supprimé avec succès !");
                 setTickets((prevTickets) => prevTickets.filter((ticket) => ticket._id !== ticketId)); // ✅ Mise à jour de l'affichage
             } else {
-                toast.error("❌ Erreur lors de la suppression du ticket.");
+                toast.error("Erreur lors de la suppression du ticket.");
             }
         } catch (error) {
-            console.error("❌ Erreur:", error);
-            toast.error("❌ Erreur lors de la suppression !");
+            console.error("Erreur:", error);
+            toast.error("Erreur lors de la suppression !");
         }
     };
 
@@ -239,11 +239,11 @@ export default function TicketForm() {
                 setTicketNumber("");
                 setPriority("1");
             } else {
-                toast.error("❌ Erreur lors de l'enregistrement de la notification: " + result.message);
+                toast.error("Erreur lors de l'enregistrement de la notification: " + result.message);
             }
         } catch (error) {
-            console.error("❌ Erreur: ", error);
-            toast.error("❌ Erreur lors de l'envoi des données !");
+            console.error("Erreur: ", error);
+            toast.error("Erreur lors de l'envoi des données !");
         }
     };
 
@@ -260,7 +260,6 @@ export default function TicketForm() {
         setShinkenTicketNumbers(newTickets);
     };
 
-    // Envoie les tickets à l'API
     // Envoie le message sur Discord
     const sendShinkenToDiscord = async (tickets) => {
         try {
@@ -273,16 +272,16 @@ export default function TicketForm() {
             if (response.ok) {
                 console.log("✅ Message Shinken envoyé sur Discord !");
             } else {
-                console.error("❌ Erreur lors de l'envoi du message Discord.");
+                console.error("Erreur lors de l'envoi du message Discord.");
             }
         } catch (error) {
-            console.error("❌ Impossible d'envoyer le message Discord :", error);
+            console.error("Impossible d'envoyer le message Discord :", error);
         }
     };
 
     const handleShinkenSubmit = async () => {
         if (shinkenTicketNumbers.some(ticket => !ticket.trim())) {
-            toast.error("❌ Veuillez remplir tous les champs.");
+            toast.error("Veuillez remplir tous les champs.");
             return;
         }
 
@@ -302,11 +301,11 @@ export default function TicketForm() {
                 // ✅ Envoie le message à Discord après l'ajout des tickets
                 await sendShinkenToDiscord(shinkenTicketNumbers);
             } else {
-                toast.error("❌ Erreur lors de l'activation de Shinken.");
+                toast.error("Erreur lors de l'activation de Shinken.");
             }
         } catch (error) {
-            console.error("❌ Erreur lors de l'envoi :", error);
-            toast.error("❌ Impossible d'envoyer la demande.");
+            console.error("Erreur lors de l'envoi :", error);
+            toast.error("Impossible d'envoyer la demande.");
         }
     };
 
