@@ -8,6 +8,7 @@ const Navbar = () => {
                 <Link to="/notif" className="text-white text-xl font-bold">Gestion des Tickets</Link>
                 <div>
                     <Link to="/notif" className="text-gray-300 hover:text-white mx-4">Autre</Link> 
+                    <Link to="/ticketlist" className="text-gray-300 hover:text-white mx-4">TicketsList</Link> 
                     {/* <Link to="/create-ticket" className="text-gray-300 hover:text-white mx-4">Créer un Ticket</Link>
                     <Link to="/view-tickets" className="text-gray-300 hover:text-white mx-4">Voir les Tickets</Link> */}
                     {/* <Link to="/create-collab" className="text-gray-300 hover:text-white mx-4">Crée un Collab</Link> */}

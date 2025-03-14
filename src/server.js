@@ -8,6 +8,7 @@ const { client } = require("./Discord/bot"); // ✅ Import du client Discord
 const { checkForAlerts } = require('./controllers/notifController'); // ✅ Import de la vérification des alertes
 const shinkenRoutes = require('./routes/shinkenRoute'); // ✅ Route Shinken
 const notifRoutes = require('./routes/notifRoute');
+const ticketRoutes = require('./routes/ticketroute'); // ✅ Route pour les tickets extraits
 
 const app = express();
 const PORT = 5000;
@@ -67,6 +68,8 @@ console.log(`📄 Documentation Swagger disponible sur : http://localhost:${PORT
 // ✅ Déclaration des routes API
 app.use('/api', notifRoutes);
 app.use('/api/shinken', shinkenRoutes);
+app.use('/api', ticketRoutes);
+
 
 // ✅ Gestion des erreurs 404
 app.use((req, res) => {
