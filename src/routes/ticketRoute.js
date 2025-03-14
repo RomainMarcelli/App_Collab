@@ -7,6 +7,9 @@ const {
     updateTicket 
 } = require('../controllers/ticketController');
 
+const { checkForAlerts } = require("../controllers/notifController"); // ✅ Import du contrôleur des alertes
+
+
 /**
  * @swagger
  * /tickets:
@@ -137,5 +140,15 @@ router.put('/tickets/:id', updateTicket);
  *         description: Erreur serveur
  */
 router.delete('/tickets/:id', deleteTicket);
+
+router.get("/check-alerts", async (req, res) => {
+    try {
+        await checkForAlerts(req.app.locals.client); // ✅ Vérifie les alertes et envoie sur Discord
+        res.status(200).json({ message: "Vérification des alertes effectuée." });
+    } catch (error) {
+        console.error("❌ Erreur lors de la vérification des alertes :", error);
+        res.status(500).json({ message: "Erreur lors de la vérification des alertes." });
+    }
+});
 
 module.exports = router;

@@ -9,6 +9,8 @@ const { checkForAlerts } = require('./controllers/notifController'); // ✅ Impo
 const shinkenRoutes = require('./routes/shinkenRoute'); // ✅ Route Shinken
 const notifRoutes = require('./routes/notifRoute');
 const ticketRoutes = require('./routes/ticketroute'); // ✅ Route pour les tickets extraits
+const { ticketClient } = require("./Discord/ticketBot"); // Bot pour les tickets
+
 
 const app = express();
 const PORT = 5000;

@@ -1,6 +1,8 @@
 const Ticket = require('../models/ticketModel');
 const { addBusinessHours, addBusinessDays } = require('../utils/timeUtils');
 const moment = require("moment-timezone");
+const { Client, GatewayIntentBits } = require("discord.js");
+
 
 // ✅ Fonction pour parser une date au format "13/03/2025 17:00:00" en Date ISO
 const parseDate = (dateStr) => {
@@ -165,5 +167,47 @@ exports.updateTicket = async (req, res) => {
     } catch (error) {
         console.error("❌ Erreur lors de la mise à jour du ticket :", error);
         res.status(500).json({ message: "Erreur interne du serveur", error });
+    }
+};
+
+
+exports.checkForAlerts = async (client) => {
+    console.log("🔍 Vérification des alertes en cours...");
+
+    try {
+        const now = new Date();
+
+        // 🔎 Récupère les tickets dont l'alertTime est dépassé et qui n'ont pas encore été signalés
+        const alertTickets = await Ticket.find({
+            alertTime: { $lte: now },
+            alertSent: false
+        }).sort({ alertTime: 1 });
+
+        if (alertTickets.length === 0) {
+            console.log("✅ Aucune alerte à envoyer.");
+            return;
+        }
+
+        const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
+        if (!channel) {
+            console.error("❌ Impossible de trouver le canal Discord ! Vérifie l'ID.");
+            return;
+        }
+
+        for (const ticket of alertTickets) {
+            console.log(`⚠️ Envoi d'une alerte pour le ticket ${ticket.ticketNumber}...`);
+
+            // 🔥 Message personnalisé
+            const alertMessage = `🚨 **Pouvez-vous traiter le ticket "${ticket.ticketNumber}" svp ? C'est une P${ticket.priority}** 🚨`;
+
+            await channel.send(alertMessage);
+
+            // ✅ Marque le ticket comme alerté
+            await Ticket.updateOne({ _id: ticket._id }, { alertSent: true });
+
+            console.log(`✅ Alerte envoyée pour le ticket ${ticket.ticketNumber}`);
+        }
+    } catch (error) {
+        console.error("❌ Erreur lors de la vérification des alertes :", error);
     }
 };
