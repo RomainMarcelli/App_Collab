@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { saveExtractedTickets, getExtractedTickets } = require('../controllers/ticketController');
+const { 
+    saveExtractedTickets, 
+    getExtractedTickets, 
+    deleteTicket, 
+    updateTicket 
+} = require('../controllers/ticketController');
 
 /**
  * @swagger
@@ -19,14 +24,19 @@ const { saveExtractedTickets, getExtractedTickets } = require('../controllers/ti
  *               properties:
  *                 ticketNumber:
  *                   type: string
+ *                   example: "S250313_053"
  *                 priority:
  *                   type: string
+ *                   example: "4"
  *                 lastUpdate:
  *                   type: string
  *                   format: date-time
+ *                   example: "2025-03-13T16:00:00.000Z"
  *     responses:
  *       201:
  *         description: Tickets enregistrés avec succès
+ *       400:
+ *         description: Données invalides ou tickets déjà existants
  *       500:
  *         description: Erreur serveur
  */
@@ -45,5 +55,87 @@ router.post('/tickets', saveExtractedTickets);
  *         description: Erreur serveur
  */
 router.get('/tickets', getExtractedTickets);
+
+/**
+ * @swagger
+ * /tickets/{id}:
+ *   delete:
+ *     summary: Supprime un ticket spécifique
+ *     description: Supprime un ticket en fonction de son ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID du ticket à supprimer
+ *     responses:
+ *       200:
+ *         description: Ticket supprimé avec succès
+ *       404:
+ *         description: Ticket non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.delete('/tickets/:id', deleteTicket);
+
+/**
+ * @swagger
+ * /tickets/{id}:
+ *   put:
+ *     summary: Met à jour la date de création d'un ticket
+ *     description: Met à jour la date de création et recalcule les délais et alertes
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID du ticket à modifier
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               newCreatedAt:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2025-03-14T10:30:00Z"
+ *     responses:
+ *       200:
+ *         description: Ticket mis à jour avec succès
+ *       400:
+ *         description: Données invalides
+ *       404:
+ *         description: Ticket non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.put('/tickets/:id', updateTicket);
+
+/**
+ * @swagger
+ * /tickets/{id}:
+ *   delete:
+ *     summary: Supprime un ticket
+ *     description: Supprime un ticket à partir de son ID.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID du ticket à supprimer
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Ticket supprimé avec succès
+ *       404:
+ *         description: Ticket non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.delete('/tickets/:id', deleteTicket);
 
 module.exports = router;

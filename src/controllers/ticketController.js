@@ -2,12 +2,25 @@ const Ticket = require('../models/ticketModel');
 const { addBusinessHours, addBusinessDays } = require('../utils/timeUtils');
 const moment = require("moment-timezone");
 
+const parseDate = (dateStr) => {
+    if (!dateStr) return null;
 
-const calculateDeadline = (priority, createdAt = new Date()) => {
+    // ✅ Conversion du format "13/03/2025 17:00:00" en Date ISO
+    const parsedDate = moment.tz(dateStr, "DD/MM/YYYY HH:mm:ss", "Europe/Paris");
+
+    if (!parsedDate.isValid()) {
+        console.error(`⚠️ Erreur : Format de date invalide reçu : ${dateStr}`);
+        return null;
+    }
+
+    return parsedDate.toDate(); // ✅ Retourne un objet `Date`
+};
+
+const calculateDeadline = (priority, lastUpdate) => {
     const businessStartHour = 9;
+    let adjustedDate = new Date(lastUpdate);
 
     if (priority === "4" || priority === "5") {
-        let adjustedDate = new Date(createdAt);
         if (adjustedDate.getHours() >= 18 || adjustedDate.getHours() < businessStartHour) {
             adjustedDate.setHours(businessStartHour, 0, 0, 0);
         }
@@ -15,19 +28,19 @@ const calculateDeadline = (priority, createdAt = new Date()) => {
     }
 
     switch (priority) {
-        case "1": return new Date(createdAt.getTime() + 1 * 60 * 60 * 1000);
-        case "2": return new Date(createdAt.getTime() + 2 * 60 * 60 * 1000);
-        case "3": return addBusinessHours(createdAt, 8);
-        default: return createdAt;
+        case "1": return new Date(adjustedDate.getTime() + 1 * 60 * 60 * 1000);
+        case "2": return new Date(adjustedDate.getTime() + 2 * 60 * 60 * 1000);
+        case "3": return addBusinessHours(adjustedDate, 8);
+        default: return adjustedDate;
     }
 };
 
-const calculateAlertTime = (priority, createdAt) => {
+const calculateAlertTime = (priority, lastUpdate) => {
     const businessStartHour = 9;
     let alertOffset;
 
+    let adjustedDate = new Date(lastUpdate);
     if (priority === "4" || priority === "5") {
-        let adjustedDate = new Date(createdAt);
         if (adjustedDate.getHours() >= 18 || adjustedDate.getHours() < businessStartHour) {
             adjustedDate.setHours(businessStartHour, 0, 0, 0);
         }
@@ -40,7 +53,7 @@ const calculateAlertTime = (priority, createdAt) => {
         case "3": alertOffset = 5; break;
         default: alertOffset = 0;
     }
-    return addBusinessHours(new Date(createdAt), alertOffset);
+    return addBusinessHours(adjustedDate, alertOffset);
 };
 
 exports.saveExtractedTickets = async (req, res) => {
@@ -52,20 +65,49 @@ exports.saveExtractedTickets = async (req, res) => {
             return res.status(400).json({ message: "Aucun ticket fourni." });
         }
 
-        tickets = tickets.map(ticket => {
-            const createdAt = new Date();
-            const deadline = calculateDeadline(ticket.priority, createdAt);
-            const alertTime = calculateAlertTime(ticket.priority, createdAt);
+        // ✅ Transformation et conversion des dates
+        const validTickets = tickets
+            .filter(ticket => ticket.ticketNumber && ticket.priority && ticket.lastUpdate)
+            .map(ticket => {
+                const parsedLastUpdate = parseDate(ticket.lastUpdate);
+                if (!parsedLastUpdate) {
+                    console.warn(`⚠️ Ticket ignoré : Date invalide pour ${ticket.ticketNumber}`);
+                    return null;
+                }
 
-            return {
-                ...ticket,
-                createdAt,
-                deadline,
-                alertTime
-            };
+                return {
+                    ...ticket,
+                    createdAt: parsedLastUpdate, // ✅ Utilisation de lastUpdate comme createdAt
+                    lastUpdate: parsedLastUpdate, // ✅ Assure que lastUpdate est bien stocké au bon format
+                    deadline: calculateDeadline(ticket.priority, parsedLastUpdate),
+                    alertTime: calculateAlertTime(ticket.priority, parsedLastUpdate)
+                };
+            })
+            .filter(ticket => ticket !== null); // ✅ Élimine les tickets avec des dates invalides
+
+        if (validTickets.length === 0) {
+            return res.status(400).json({ message: "Aucun ticket valide à enregistrer." });
+        }
+
+        // ✅ Vérification : Exclure les tickets déjà existants
+        const existingTickets = await Ticket.find({
+            ticketNumber: { $in: validTickets.map(t => t.ticketNumber) }
         });
 
-        await Ticket.insertMany(tickets);
+        const existingNumbers = new Set(existingTickets.map(t => t.ticketNumber));
+
+        const newTickets = validTickets.filter(ticket => !existingNumbers.has(ticket.ticketNumber));
+
+        if (newTickets.length === 0) {
+            console.warn("⚠️ Aucun nouveau ticket à enregistrer, tous existent déjà.");
+            return res.status(400).json({
+                message: "Tous les tickets existent déjà.",
+                existingTickets: [...existingNumbers]
+            });
+        }
+
+        // ✅ Insertion uniquement des nouveaux tickets
+        await Ticket.insertMany(newTickets);
         console.log("✅ Tickets enregistrés avec succès !");
         res.status(201).json({ message: "Tickets enregistrés avec succès !" });
 
@@ -75,22 +117,16 @@ exports.saveExtractedTickets = async (req, res) => {
     }
 };
 
-// ✅ Fonction pour convertir une date "13/03/2025 14:41:15" en format ISO
-const parseDate = (dateStr) => {
-    if (!dateStr) return null;
-
-    // 🔹 Définition du format source : "13/03/2025 14:41:15"
-    const parsedDate = moment.tz(dateStr, "DD/MM/YYYY HH:mm:ss", "Europe/Paris");
-
-    // 🛑 Vérification si la conversion a échoué
-    if (!parsedDate.isValid()) {
-        console.error(`⚠️ Format de date invalide reçu: ${dateStr}`);
-        return null;
+// 📌 Récupère tous les tickets enregistrés
+exports.getExtractedTickets = async (req, res) => {
+    try {
+        const tickets = await Ticket.find().sort({ createdAt: -1 });
+        res.status(200).json(tickets);
+    } catch (error) {
+        res.status(500).json({ message: "Erreur lors de la récupération des tickets", error });
     }
-
-    console.log(`✅ Date convertie : ${dateStr} ➝ ${parsedDate.toISOString()}`);
-    return parsedDate.toDate(); // ✅ Converti en objet `Date` utilisable par MongoDB
 };
+
 
 // 📌 Récupère tous les tickets enregistrés
 exports.getExtractedTickets = async (req, res) => {
@@ -99,5 +135,45 @@ exports.getExtractedTickets = async (req, res) => {
         res.status(200).json(tickets);
     } catch (error) {
         res.status(500).json({ message: "Erreur lors de la récupération des tickets", error });
+    }
+};
+
+
+exports.deleteTicket = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletedTicket = await Ticket.findByIdAndDelete(id);
+
+        if (!deletedTicket) {
+            return res.status(404).json({ message: "Ticket non trouvé" });
+        }
+
+        res.status(200).json({ message: "Ticket supprimé avec succès !" });
+    } catch (error) {
+        console.error("❌ Erreur lors de la suppression du ticket :", error);
+        res.status(500).json({ message: "Erreur interne du serveur", error });
+    }
+};
+
+
+exports.updateTicket = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { createdAt } = req.body;
+
+        if (!createdAt) {
+            return res.status(400).json({ message: "La date de création est requise !" });
+        }
+
+        const updatedTicket = await Ticket.findByIdAndUpdate(id, { createdAt }, { new: true });
+
+        if (!updatedTicket) {
+            return res.status(404).json({ message: "Ticket non trouvé" });
+        }
+
+        res.status(200).json({ message: "Ticket mis à jour avec succès", updatedTicket });
+    } catch (error) {
+        console.error("❌ Erreur lors de la mise à jour du ticket :", error);
+        res.status(500).json({ message: "Erreur interne du serveur", error });
     }
 };
