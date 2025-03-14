@@ -2,10 +2,10 @@ const Ticket = require('../models/ticketModel');
 const { addBusinessHours, addBusinessDays } = require('../utils/timeUtils');
 const moment = require("moment-timezone");
 
+// ✅ Fonction pour parser une date au format "13/03/2025 17:00:00" en Date ISO
 const parseDate = (dateStr) => {
     if (!dateStr) return null;
 
-    // ✅ Conversion du format "13/03/2025 17:00:00" en Date ISO
     const parsedDate = moment.tz(dateStr, "DD/MM/YYYY HH:mm:ss", "Europe/Paris");
 
     if (!parsedDate.isValid()) {
@@ -13,9 +13,10 @@ const parseDate = (dateStr) => {
         return null;
     }
 
-    return parsedDate.toDate(); // ✅ Retourne un objet `Date`
+    return parsedDate.toDate();
 };
 
+// ✅ Calcul de la deadline en fonction de la priorité
 const calculateDeadline = (priority, lastUpdate) => {
     const businessStartHour = 9;
     let adjustedDate = new Date(lastUpdate);
@@ -35,11 +36,12 @@ const calculateDeadline = (priority, lastUpdate) => {
     }
 };
 
+// ✅ Calcul de l'alerte en fonction de la priorité
 const calculateAlertTime = (priority, lastUpdate) => {
     const businessStartHour = 9;
     let alertOffset;
-
     let adjustedDate = new Date(lastUpdate);
+
     if (priority === "4" || priority === "5") {
         if (adjustedDate.getHours() >= 18 || adjustedDate.getHours() < businessStartHour) {
             adjustedDate.setHours(businessStartHour, 0, 0, 0);
@@ -56,6 +58,7 @@ const calculateAlertTime = (priority, lastUpdate) => {
     return addBusinessHours(adjustedDate, alertOffset);
 };
 
+// ✅ Enregistre les tickets en supprimant les anciens avant
 exports.saveExtractedTickets = async (req, res) => {
     try {
         console.log("📥 Tickets reçus pour enregistrement :", req.body);
@@ -64,6 +67,10 @@ exports.saveExtractedTickets = async (req, res) => {
         if (!Array.isArray(tickets) || tickets.length === 0) {
             return res.status(400).json({ message: "Aucun ticket fourni." });
         }
+
+        // 🔥 Supprime tous les anciens tickets avant d'insérer les nouveaux
+        await Ticket.deleteMany({});
+        console.log("🗑️ Anciennes données supprimées !");
 
         // ✅ Transformation et conversion des dates
         const validTickets = tickets
@@ -77,37 +84,20 @@ exports.saveExtractedTickets = async (req, res) => {
 
                 return {
                     ...ticket,
-                    createdAt: parsedLastUpdate, // ✅ Utilisation de lastUpdate comme createdAt
-                    lastUpdate: parsedLastUpdate, // ✅ Assure que lastUpdate est bien stocké au bon format
+                    createdAt: parsedLastUpdate,
+                    lastUpdate: parsedLastUpdate,
                     deadline: calculateDeadline(ticket.priority, parsedLastUpdate),
                     alertTime: calculateAlertTime(ticket.priority, parsedLastUpdate)
                 };
             })
-            .filter(ticket => ticket !== null); // ✅ Élimine les tickets avec des dates invalides
+            .filter(ticket => ticket !== null);
 
         if (validTickets.length === 0) {
             return res.status(400).json({ message: "Aucun ticket valide à enregistrer." });
         }
 
-        // ✅ Vérification : Exclure les tickets déjà existants
-        const existingTickets = await Ticket.find({
-            ticketNumber: { $in: validTickets.map(t => t.ticketNumber) }
-        });
-
-        const existingNumbers = new Set(existingTickets.map(t => t.ticketNumber));
-
-        const newTickets = validTickets.filter(ticket => !existingNumbers.has(ticket.ticketNumber));
-
-        if (newTickets.length === 0) {
-            console.warn("⚠️ Aucun nouveau ticket à enregistrer, tous existent déjà.");
-            return res.status(400).json({
-                message: "Tous les tickets existent déjà.",
-                existingTickets: [...existingNumbers]
-            });
-        }
-
-        // ✅ Insertion uniquement des nouveaux tickets
-        await Ticket.insertMany(newTickets);
+        // ✅ Insertion des nouveaux tickets
+        await Ticket.insertMany(validTickets);
         console.log("✅ Tickets enregistrés avec succès !");
         res.status(201).json({ message: "Tickets enregistrés avec succès !" });
 
@@ -117,28 +107,17 @@ exports.saveExtractedTickets = async (req, res) => {
     }
 };
 
-// 📌 Récupère tous les tickets enregistrés
+// 📌 Récupère tous les tickets enregistrés, triés par alerte time croissant
 exports.getExtractedTickets = async (req, res) => {
     try {
-        const tickets = await Ticket.find().sort({ createdAt: -1 });
+        const tickets = await Ticket.find().sort({ alertTime: 1 }); // 🔥 Trie par alerte la plus proche
         res.status(200).json(tickets);
     } catch (error) {
         res.status(500).json({ message: "Erreur lors de la récupération des tickets", error });
     }
 };
 
-
-// 📌 Récupère tous les tickets enregistrés
-exports.getExtractedTickets = async (req, res) => {
-    try {
-        const tickets = await Ticket.find().sort({ createdAt: -1 });
-        res.status(200).json(tickets);
-    } catch (error) {
-        res.status(500).json({ message: "Erreur lors de la récupération des tickets", error });
-    }
-};
-
-
+// 📌 Supprime un ticket par ID
 exports.deleteTicket = async (req, res) => {
     try {
         const { id } = req.params;
@@ -155,7 +134,7 @@ exports.deleteTicket = async (req, res) => {
     }
 };
 
-
+// 📌 Met à jour un ticket et recalcule la deadline et l'alerte
 exports.updateTicket = async (req, res) => {
     try {
         const { id } = req.params;
@@ -165,11 +144,22 @@ exports.updateTicket = async (req, res) => {
             return res.status(400).json({ message: "La date de création est requise !" });
         }
 
-        const updatedTicket = await Ticket.findByIdAndUpdate(id, { createdAt }, { new: true });
+        const parsedCreatedAt = parseDate(createdAt);
+        if (!parsedCreatedAt) {
+            return res.status(400).json({ message: "Format de date invalide !" });
+        }
 
-        if (!updatedTicket) {
+        const ticket = await Ticket.findById(id);
+        if (!ticket) {
             return res.status(404).json({ message: "Ticket non trouvé" });
         }
+
+        // ✅ Mise à jour de la date, deadline et alerte
+        ticket.createdAt = parsedCreatedAt;
+        ticket.deadline = calculateDeadline(ticket.priority, parsedCreatedAt);
+        ticket.alertTime = calculateAlertTime(ticket.priority, parsedCreatedAt);
+
+        const updatedTicket = await ticket.save();
 
         res.status(200).json({ message: "Ticket mis à jour avec succès", updatedTicket });
     } catch (error) {
