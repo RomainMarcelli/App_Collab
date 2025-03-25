@@ -7,12 +7,10 @@ const swaggerJsDoc = require('swagger-jsdoc');
 const { client } = require("./Discord/bot"); // ✅ Import du client Discord
 const { checkForAlerts } = require('./controllers/notifController'); // ✅ Import de la vérification des alertes
 const shinkenRoutes = require('./routes/shinkenRoute'); // ✅ Route Shinken
-
-// Importation des routes
-const collaborateurRoutes = require('./routes/collabRoute');
-const ticketRoutes = require('./routes/ticketRoute');
-const closedRoutes = require('./routes/closedRoute');
 const notifRoutes = require('./routes/notifRoute');
+const ticketRoutes = require('./routes/ticketroute'); // ✅ Route pour les tickets extraits
+const { ticketClient } = require("./Discord/ticketBot"); // Bot pour les tickets
+
 
 const app = express();
 const PORT = 5000;
@@ -70,11 +68,10 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 console.log(`📄 Documentation Swagger disponible sur : http://localhost:${PORT}/api-docs`);
 
 // ✅ Déclaration des routes API
-app.use('/api', ticketRoutes);
-app.use('/api', collaborateurRoutes);
-app.use('/api', closedRoutes);
 app.use('/api', notifRoutes);
 app.use('/api/shinken', shinkenRoutes);
+app.use('/api', ticketRoutes);
+
 
 // ✅ Gestion des erreurs 404
 app.use((req, res) => {

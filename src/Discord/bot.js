@@ -3,6 +3,7 @@ const { Client, GatewayIntentBits } = require("discord.js");
 const mongoose = require("mongoose"); // ✅ Import de mongoose
 const { checkForAlerts } = require("../controllers/notifController"); // ✅ Import des alertes
 const Notif = require("../models/notifModel"); // ✅ Import du modèle des notifications
+const ticketBot = require("./ticketBot"); // ✅ Import du fichier ticketBot.js
 
 // ✅ Création du client Discord
 const client = new Client({

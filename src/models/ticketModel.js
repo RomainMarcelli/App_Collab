@@ -1,47 +1,23 @@
 const mongoose = require('mongoose');
 
-const ticketSchema = new mongoose.Schema({
-    numeroTicket: {
-        type: String,
+const TicketSchema = new mongoose.Schema({
+    ticketNumber: { 
+        type: String, 
+        required: true, 
+        unique: true, 
+        index: { unique: true, sparse: true }, // ✅ Empêche les doublons tout en autorisant `null`
+        trim: true 
+    },  
+    priority: { 
+        type: String, 
         required: true,
-        unique: true
+        enum: ["1", "2", "3", "4", "5"] // ✅ Assure que la priorité est valide
     },
-    priorite: {
-        type: Number,
-        required: true,
-        enum: [1, 2, 3, 4, 5]
-    },
-    sujet: {
-        type: String,
-        required: true
-    },
-    description: {
-        type: String,
-        required: true
-    },
-    beneficiaire: {
-        type: String,
-        required: true
-    },
-    dateEmission: {
-        type: String,
-        required: true,
-        // default: Date.now
-    },
-    collaborateur: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Collaborateur',
-        required: false
-    },
-    estAffecte: { // Ajout du champ pour suivre si le ticket est affecté
-        type: Boolean,
-        default: false // Par défaut, le ticket n'est pas affecté
-    },
-    timerRemaining: { // Nouveau champ pour stocker la durée restante en millisecondes
-        type: Number,
-        default: 0, // Par défaut, le timer commence à 0
-    },
-});
+    lastUpdate: { type: Date, required: true }, // ✅ Date extraite d'EasyVista
+    createdAt: { type: Date, default: Date.now }, // ✅ Date d'ajout dans la BDD
+    deadline: { type: Date, required: true }, // ✅ Date limite de traitement du ticket
+    alertTime: { type: Date, required: true }, // ✅ Date de l'alerte
+    alertSent: { type: Boolean, default: false } // ✅ Indique si l'alerte a été envoyée
+}, { timestamps: true });
 
-const Ticket = mongoose.models.Ticket || mongoose.model('Ticket', ticketSchema);
-module.exports = Ticket;
+module.exports = mongoose.model('Ticket', TicketSchema);

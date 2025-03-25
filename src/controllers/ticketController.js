@@ -1,285 +1,218 @@
-// controllers/ticketController.js
-const Ticket = require('../models/ticketModel'); // Assurez-vous d'importer le modèle Ticket
-const ClosedTicket = require('../models/ClosedTicket'); // Modèle pour les tickets fermés
+const Ticket = require('../models/ticketModel');
+const { addBusinessHours, addBusinessDays } = require('../utils/timeUtils');
+const moment = require("moment-timezone");
+const { Client, GatewayIntentBits } = require("discord.js");
 
-exports.getAllTickets = async (req, res) => {
-    const { status } = req.query;
 
+// ✅ Fonction pour parser une date au format "13/03/2025 17:00:00" en Date ISO
+const parseDate = (dateStr) => {
+    if (!dateStr) return null;
+
+    const parsedDate = moment.tz(dateStr, "DD/MM/YYYY HH:mm:ss", "Europe/Paris");
+
+    if (!parsedDate.isValid()) {
+        console.error(`⚠️ Erreur : Format de date invalide reçu : ${dateStr}`);
+        return null;
+    }
+
+    return parsedDate.toDate();
+};
+
+// ✅ Calcul de la deadline en fonction de la priorité
+const calculateDeadline = (priority, lastUpdate) => {
+    const businessStartHour = 9;
+    let adjustedDate = new Date(lastUpdate);
+
+    if (priority === "4" || priority === "5") {
+        if (adjustedDate.getHours() >= 18 || adjustedDate.getHours() < businessStartHour) {
+            // Avancer au jour ouvré suivant à 9h
+            adjustedDate = addBusinessDays(adjustedDate, 1);
+            adjustedDate.setHours(businessStartHour, 0, 0, 0);
+        }        
+        return addBusinessDays(adjustedDate, priority === "4" ? 3 : 5);
+    }
+
+    switch (priority) {
+        case "1": return new Date(adjustedDate.getTime() + 1 * 60 * 60 * 1000);
+        case "2": return new Date(adjustedDate.getTime() + 2 * 60 * 60 * 1000);
+        case "3": return addBusinessHours(adjustedDate, 8);
+        default: return adjustedDate;
+    }
+};
+
+// ✅ Calcul de l'alerte en fonction de la priorité
+const calculateAlertTime = (priority, lastUpdate) => {
+    const businessStartHour = 9;
+    let alertOffset;
+    let adjustedDate = new Date(lastUpdate);
+
+    if (priority === "4" || priority === "5") {
+        if (adjustedDate.getHours() >= 18 || adjustedDate.getHours() < businessStartHour) {
+            // Avancer au jour ouvré suivant à 9h
+            adjustedDate = addBusinessDays(adjustedDate, 1);
+            adjustedDate.setHours(businessStartHour, 0, 0, 0);
+        }
+        
+        return addBusinessDays(adjustedDate, priority === "4" ? 2 : 4);
+    }
+
+    switch (priority) {
+        case "1": alertOffset = 10 / 3600; break;
+        case "2": alertOffset = 15 / 60; break;
+        case "3": alertOffset = 5; break;
+        default: alertOffset = 0;
+    }
+    return addBusinessHours(adjustedDate, alertOffset);
+};
+
+// ✅ Enregistre les tickets en supprimant les anciens avant
+exports.saveExtractedTickets = async (req, res) => {
     try {
-        const query = status ? { status } : {};
-        const tickets = await Ticket.find(query);
+        console.log("📥 Tickets reçus pour enregistrement :", req.body);
+        let tickets = req.body;
+
+        if (!Array.isArray(tickets) || tickets.length === 0) {
+            return res.status(400).json({ message: "Aucun ticket fourni." });
+        }
+
+        // 🔥 Supprime tous les anciens tickets avant d'insérer les nouveaux
+        await Ticket.deleteMany({});
+        console.log("🗑️ Anciennes données supprimées !");
+
+        // ✅ Transformation et conversion des dates
+        const validTickets = tickets
+            .filter(ticket => ticket.ticketNumber && ticket.priority && ticket.lastUpdate)
+            .map(ticket => {
+                const parsedLastUpdate = parseDate(ticket.lastUpdate);
+                if (!parsedLastUpdate) {
+                    console.warn(`⚠️ Ticket ignoré : Date invalide pour ${ticket.ticketNumber}`);
+                    return null;
+                }
+
+                return {
+                    ...ticket,
+                    createdAt: parsedLastUpdate,
+                    lastUpdate: parsedLastUpdate,
+                    deadline: calculateDeadline(ticket.priority, parsedLastUpdate),
+                    alertTime: calculateAlertTime(ticket.priority, parsedLastUpdate)
+                };
+            })
+            .filter(ticket => ticket !== null);
+
+        if (validTickets.length === 0) {
+            return res.status(400).json({ message: "Aucun ticket valide à enregistrer." });
+        }
+
+        // ✅ Insertion des nouveaux tickets
+        await Ticket.insertMany(validTickets);
+        // console.log("✅ Tickets enregistrés avec succès !");
+        res.status(201).json({ message: "Tickets enregistrés avec succès !" });
+
+    } catch (error) {
+        console.error("❌ Erreur lors de l'enregistrement des tickets :", error);
+        res.status(500).json({ message: "Erreur interne du serveur", error: error.message });
+    }
+};
+
+// 📌 Récupère tous les tickets enregistrés, triés par alerte time croissant
+exports.getExtractedTickets = async (req, res) => {
+    try {
+        const tickets = await Ticket.find().sort({ alertTime: 1 }); // 🔥 Trie par alerte la plus proche
         res.status(200).json(tickets);
     } catch (error) {
-        console.error('Erreur lors de la récupération des tickets :', error);
-        res.status(500).json({ message: 'Erreur lors de la récupération des tickets' });
+        res.status(500).json({ message: "Erreur lors de la récupération des tickets", error });
     }
 };
 
-// const getTickets = async (req, res) => {
-//     const { status } = req.query;
-
-//     try {
-//         const query = status ? { status } : {};
-//         const tickets = await Ticket.find(query);
-//         res.status(200).json(tickets);
-//     } catch (error) {
-//         console.error('Erreur lors de la récupération des tickets :', error);
-//         res.status(500).json({ message: 'Erreur lors de la récupération des tickets' });
-//     }
-// };
-
-
-// Ajouter un ticket
-exports.addTicket = async (req, res) => {
-    try {
-        const { numeroTicket, priorite, sujet, beneficiaire, description, dateEmission } = req.body;
-
-        console.log('Données reçues du frontend :', req.body); // Log des données reçues pour le débogage
-
-        // Vérification des champs requis
-        if (!numeroTicket || !priorite || !sujet || !beneficiaire || !description || !dateEmission) {
-            return res.status(400).json({ message: 'Tous les champs sont requis' });
-        }
-
-        // Conversion sécurisée de la date
-        const parsedDate = new Date(dateEmission); // Convertit la chaîne en objet Date
-        if (isNaN(parsedDate.getTime())) {
-            return res.status(400).json({ message: 'La date fournie est invalide.' });
-        }
-
-        // Création du ticket avec les données reçues
-        const newTicket = new Ticket({
-            numeroTicket,
-            priorite,
-            sujet,
-            beneficiaire,
-            description,
-            dateEmission: parsedDate, // Stocke la date telle quelle (UTC si déjà convertie en amont)
-        });
-
-        // Sauvegarde dans la base de données
-        await newTicket.save();
-
-        // Retourne une réponse avec un message de succès et les données du ticket créé
-        return res.status(201).json({
-            message: 'Ticket ajouté avec succès',
-            ticket: newTicket,
-        });
-    } catch (error) {
-        console.error('Erreur lors de l\'ajout du ticket:', error); // Log de l'erreur pour le serveur
-        return res.status(500).json({ message: 'Erreur lors de l\'ajout du ticket', error });
-    }
-};
-
-// Mettre à jour un ticket
-exports.updateTicket = async (req, res) => {
-    const { id } = req.params;
-    const { numeroTicket, priorite, sujet, beneficiaire, description } = req.body;
-
-    try {
-        const updatedTicket = await Ticket.findByIdAndUpdate(
-            id,
-            { numeroTicket, priorite, sujet, beneficiaire, description },
-            { new: true, runValidators: true }
-        );
-
-        if (!updatedTicket) {
-            return res.status(404).json({ message: 'Ticket non trouvé' });
-        }
-
-        res.json({ message: 'Ticket mis à jour avec succès', ticket: updatedTicket });
-    } catch (error) {
-        res.status(500).json({ message: 'Erreur lors de la mise à jour du ticket', error });
-    }
-};
-
-// Fermer un ticket
-exports.closeTicket = async (req, res) => {
-    try {
-        const ticket = await Ticket.findById(req.params.ticketId);
-        if (!ticket) {
-            return res.status(404).send('Ticket non trouvé');
-        }
-
-        const closedTicket = new ClosedTicket({
-            numeroTicket: ticket.numeroTicket,
-            priorite: ticket.priorite,
-            sujet: ticket.sujet,
-            description: ticket.description,
-            beneficiaire: ticket.beneficiaire,
-            dateEmission: ticket.dateEmission,
-        });
-
-        await closedTicket.save();
-        await Ticket.findByIdAndDelete(req.params.ticketId);
-
-        res.json({ message: 'Ticket fermé avec succès et déplacé dans la collection des tickets fermés' });
-    } catch (error) {
-        console.error('Erreur lors de la clôture du ticket:', error);
-        res.status(500).send('Erreur lors de la clôture du ticket');
-    }
-};
-
-// Supprimer un ticket
+// 📌 Supprime un ticket par ID
 exports.deleteTicket = async (req, res) => {
-    const { id } = req.params;
     try {
-        const ticket = await Ticket.findByIdAndDelete(id);
+        const { id } = req.params;
+        const deletedTicket = await Ticket.findByIdAndDelete(id);
+
+        if (!deletedTicket) {
+            return res.status(404).json({ message: "Ticket non trouvé" });
+        }
+
+        res.status(200).json({ message: "Ticket supprimé avec succès !" });
+    } catch (error) {
+        console.error("❌ Erreur lors de la suppression du ticket :", error);
+        res.status(500).json({ message: "Erreur interne du serveur", error });
+    }
+};
+
+// 📌 Met à jour un ticket et recalcule la deadline et l'alerte
+exports.updateTicket = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { createdAt } = req.body;
+
+        if (!createdAt) {
+            return res.status(400).json({ message: "La date de création est requise !" });
+        }
+
+        const parsedCreatedAt = parseDate(createdAt);
+        if (!parsedCreatedAt) {
+            return res.status(400).json({ message: "Format de date invalide !" });
+        }
+
+        const ticket = await Ticket.findById(id);
         if (!ticket) {
-            return res.status(404).send({ message: "Ticket non trouvé" });
-        }
-        res.send({ message: "Ticket supprimé avec succès" });
-    } catch (error) {
-        res.status(500).send({ message: "Erreur lors de la suppression du ticket" });
-    }
-};
-
-// Affecter un collaborateur à un ticket
-exports.assignCollaborator = async (req, res) => {
-    const { id } = req.params;
-    const { collaborateurId } = req.body;
-
-    try {
-        const updatedTicket = await Ticket.findByIdAndUpdate(
-            id,
-            { 
-                collaborateur: collaborateurId,
-                estAffecte: true
-            },
-            { new: true, runValidators: true }
-        );
-
-        if (!updatedTicket) {
-            return res.status(404).json({ message: 'Ticket non trouvé' });
+            return res.status(404).json({ message: "Ticket non trouvé" });
         }
 
-        res.json({ message: 'Ticket affecté avec succès', ticket: updatedTicket });
-    } catch (error) {
-        res.status(500).json({ message: 'Erreur lors de l\'affectation du ticket', error });
-    }
-};
+        // ✅ Mise à jour de la date, deadline et alerte
+        ticket.createdAt = parsedCreatedAt;
+        ticket.deadline = calculateDeadline(ticket.priority, parsedCreatedAt);
+        ticket.alertTime = calculateAlertTime(ticket.priority, parsedCreatedAt);
 
-// Récupérer les tickets affectés à un collaborateur
-exports.getAssignedTickets = async (req, res) => {
-    const { collaborateurId } = req.params;
+        const updatedTicket = await ticket.save();
 
-    try {
-        const tickets = await Ticket.find({ collaborateur: collaborateurId });
-        res.json(tickets);
+        res.status(200).json({ message: "Ticket mis à jour avec succès", updatedTicket });
     } catch (error) {
-        res.status(500).json({ message: 'Erreur lors de la récupération des tickets affectés', error });
+        console.error("❌ Erreur lors de la mise à jour du ticket :", error);
+        res.status(500).json({ message: "Erreur interne du serveur", error });
     }
 };
 
 
+exports.checkForAlerts = async (client) => {
+    // console.log("Vérification des alertes en cours...");
 
-exports.affecterTicket = async (req, res) => {
     try {
-        const { ticketId } = req.params;
-        const { collaborateurId } = req.body;
+        const now = new Date();
 
-        // Mettre à jour le ticket avec l'ID du collaborateur et marquer comme affecté
-        const ticket = await Ticket.findByIdAndUpdate(
-            ticketId,
-            { 
-                collaborateur: collaborateurId,
-                estAffecte: true // Marquer le ticket comme affecté
-            },
-            { new: true, runValidators: true } // Options pour retourner le document mis à jour
-        );
+        // 🔎 Récupère les tickets dont l'alertTime est dépassé et qui n'ont pas encore été signalés
+        const alertTickets = await Ticket.find({
+            alertTime: { $lte: now },
+            alertSent: false
+        }).sort({ alertTime: 1 });
 
-        if (!ticket) {
-            return res.status(404).json({ message: 'Ticket non trouvé' });
+        if (alertTickets.length === 0) {
+            // console.log("✅ Aucune alerte à envoyer.");
+            return;
         }
 
-        res.status(200).json({ message: 'Ticket affecté avec succès', ticket });
-    } catch (error) {
-        res.status(500).json({ message: 'Erreur lors de l\'affectation du ticket', error });
-    }
-};
-
-
-exports.closeTicket = async (req, res) => {
-    const { ticketId } = req.params;
-
-    try {
-        // Trouver le ticket à fermer
-        const ticket = await Ticket.findById(ticketId);
-        if (!ticket) {
-            return res.status(404).json({ message: 'Ticket non trouvé' });
+        const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
+        if (!channel) {
+            console.error("❌ Impossible de trouver le canal Discord ! Vérifie l'ID.");
+            return;
         }
 
-        // Créer un nouvel enregistrement dans ClosedTicket
-        const closedTicket = new ClosedTicket({
-            numeroTicket: ticket.numeroTicket,
-            priorite: ticket.priorite,
-            sujet: ticket.sujet,
-            description: ticket.description,
-            beneficiaire: ticket.beneficiaire,
-            dateEmission: ticket.dateEmission,
-            dateFermeture: new Date(),
-        });
+        for (const ticket of alertTickets) {
+            // console.log(`⚠️ Envoi d'une alerte pour le ticket ${ticket.ticketNumber}...`);
 
-        // Sauvegarder le ticket fermé dans ClosedTicket
-        await closedTicket.save();
+            // 🔥 Message personnalisé
+            const alertMessage = `Pouvez-vous traiter le ticket **"${ticket.ticketNumber}"** svp ? C'est une **P${ticket.priority}**`;
 
-        // Supprimer le ticket de la collection Ticket
-        await Ticket.findByIdAndDelete(ticketId);
+            await channel.send(alertMessage);
 
-        return res.status(200).json({ message: 'Ticket fermé avec succès et déplacé dans la collection des tickets fermés' });
-    } catch (error) {
-        console.error('Erreur lors de la clôture du ticket:', error);
-        return res.status(500).json({ message: 'Erreur lors de la clôture du ticket' });
-    }
-};
+            // ✅ Marque le ticket comme alerté
+            await Ticket.updateOne({ _id: ticket._id }, { alertSent: true });
 
-
-exports.updateTimer = async (req, res) => {
-    try {
-        const { additionalTime } = req.body; // Temps supplémentaire en millisecondes
-        const ticketId = req.params.id;
-
-        const ticket = await Ticket.findById(ticketId);
-        if (!ticket) {
-            return res.status(404).json({ message: 'Ticket non trouvé' });
+            // console.log(`✅ Alerte envoyée pour le ticket ${ticket.ticketNumber}`);
         }
-
-        // Ajoutez le temps supplémentaire
-        ticket.timerRemaining = (ticket.timerRemaining || 0) + additionalTime;
-
-        await ticket.save();
-
-        res.status(200).json({ 
-            message: 'Minuteur mis à jour avec succès', 
-            timerRemaining: ticket.timerRemaining 
-        });
     } catch (error) {
-        console.error('Erreur lors de la mise à jour du minuteur:', error);
-        res.status(500).json({ message: 'Erreur interne du serveur' });
+        console.error("❌ Erreur lors de la vérification des alertes :", error);
     }
 };
-
-exports.removeTimer = async (req, res) => {
-    console.log(`Contrôleur appelé pour supprimer le timer du ticket : ${req.params.id}`);
-    try {
-        const ticketId = req.params.id;
-        const ticket = await Ticket.findById(ticketId);
-        console.log(`Requête reçue pour supprimer le timer du ticket : ${ticketId}`); // Log
-
-        if (!ticket) {
-            console.error(`Ticket non trouvé : ${ticketId}`);
-            return res.status(404).json({ message: 'Ticket non trouvé' });
-        }
-
-        ticket.timerRemaining = null; // Supprime ou réinitialise le timer
-        await ticket.save();
-
-        console.log(`Timer supprimé pour le ticket : ${ticketId}`); // Log succès
-        res.status(200).json({ message: 'Timer supprimé avec succès' });
-    } catch (error) {
-        console.error('Erreur lors de la suppression du timer:', error);
-        res.status(500).json({ message: 'Erreur interne du serveur' });
-    }
-};
-
-

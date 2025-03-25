@@ -1,157 +1,129 @@
-/**
- * @swagger
- * tags:
- *   name: Tickets
- *   description: API pour la gestion des tickets
- */
-
 const express = require('express');
 const router = express.Router();
-const ticketController = require('../controllers/ticketController');
+const { 
+    saveExtractedTickets, 
+    getExtractedTickets, 
+    deleteTicket, 
+    updateTicket 
+} = require('../controllers/ticketController');
+
+const { checkForAlerts } = require("../controllers/notifController"); // ✅ Import du contrôleur des alertes
+
+
+/**
+ * @swagger
+ * /tickets:
+ *   post:
+ *     summary: Enregistre les tickets extraits depuis EasyVista
+ *     description: Reçoit une liste de tickets et les stocke dans MongoDB.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: array
+ *             items:
+ *               type: object
+ *               properties:
+ *                 ticketNumber:
+ *                   type: string
+ *                   example: "S250313_053"
+ *                 priority:
+ *                   type: string
+ *                   example: "4"
+ *                 lastUpdate:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-03-13T16:00:00.000Z"
+ *     responses:
+ *       201:
+ *         description: Tickets enregistrés avec succès
+ *       400:
+ *         description: Données invalides ou tickets déjà existants
+ *       500:
+ *         description: Erreur serveur
+ */
+router.post('/tickets', saveExtractedTickets);
 
 /**
  * @swagger
  * /tickets:
  *   get:
- *     summary: Récupérer tous les tickets
- *     tags: [Tickets]
+ *     summary: Récupère tous les tickets extraits
+ *     description: Retourne une liste de tickets enregistrés en base de données.
  *     responses:
  *       200:
- *         description: Liste de tous les tickets
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   _id:
- *                     type: string
- *                     description: ID unique du ticket
- *                   numeroTicket:
- *                     type: string
- *                     description: Numéro unique du ticket
- *                   priorite:
- *                     type: integer
- *                     description: Priorité du ticket
- *                   sujet:
- *                     type: string
- *                     description: Sujet du ticket
- *                   description:
- *                     type: string
- *                     description: Description détaillée
- *                   beneficiaire:
- *                     type: string
- *                     description: Nom du bénéficiaire
+ *         description: Liste des tickets
+ *       500:
+ *         description: Erreur serveur
  */
-router.get('/tickets', ticketController.getAllTickets);
-
-/**
- * @swagger
- * /tickets:
- *   post:
- *     summary: Ajouter un nouveau ticket
- *     tags: [Tickets]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - numeroTicket
- *               - priorite
- *               - sujet
- *               - description
- *               - beneficiaire
- *             properties:
- *               numeroTicket:
- *                 type: string
- *                 description: Numéro unique du ticket
- *               priorite:
- *                 type: integer
- *                 description: Priorité du ticket
- *               sujet:
- *                 type: string
- *                 description: Sujet du ticket
- *               description:
- *                 type: string
- *                 description: Description détaillée
- *               beneficiaire:
- *                 type: string
- *                 description: Nom du bénéficiaire
- *     responses:
- *       201:
- *         description: Ticket ajouté avec succès
- *       400:
- *         description: Erreur de validation des données
- */
-router.post('/tickets', ticketController.addTicket);
-
-/**
- * @swagger
- * /tickets/{id}:
- *   put:
- *     summary: Mettre à jour un ticket
- *     tags: [Tickets]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: ID du ticket à mettre à jour
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               sujet:
- *                 type: string
- *                 description: Sujet mis à jour
- *               description:
- *                 type: string
- *                 description: Description mise à jour
- *               priorite:
- *                 type: integer
- *                 description: Nouvelle priorité
- *     responses:
- *       200:
- *         description: Ticket mis à jour avec succès
- *       404:
- *         description: Ticket non trouvé
- */
-router.put('/tickets/:id', ticketController.updateTicket);
-
-/**
- * @swagger
- * /tickets/{ticketId}/close:
- *   post:
- *     summary: Fermer un ticket
- *     tags: [Tickets]
- *     parameters:
- *       - in: path
- *         name: ticketId
- *         required: true
- *         description: ID du ticket à fermer
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Ticket fermé avec succès
- *       404:
- *         description: Ticket non trouvé
- */
-router.post('/tickets/:ticketId/close', ticketController.closeTicket);
+router.get('/tickets', getExtractedTickets);
 
 /**
  * @swagger
  * /tickets/{id}:
  *   delete:
- *     summary: Supprimer un ticket
- *     tags: [Tickets]
+ *     summary: Supprime un ticket spécifique
+ *     description: Supprime un ticket en fonction de son ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID du ticket à supprimer
+ *     responses:
+ *       200:
+ *         description: Ticket supprimé avec succès
+ *       404:
+ *         description: Ticket non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.delete('/tickets/:id', deleteTicket);
+
+/**
+ * @swagger
+ * /tickets/{id}:
+ *   put:
+ *     summary: Met à jour la date de création d'un ticket
+ *     description: Met à jour la date de création et recalcule les délais et alertes
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID du ticket à modifier
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               newCreatedAt:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2025-03-14T10:30:00Z"
+ *     responses:
+ *       200:
+ *         description: Ticket mis à jour avec succès
+ *       400:
+ *         description: Données invalides
+ *       404:
+ *         description: Ticket non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.put('/tickets/:id', updateTicket);
+
+/**
+ * @swagger
+ * /tickets/{id}:
+ *   delete:
+ *     summary: Supprime un ticket
+ *     description: Supprime un ticket à partir de son ID.
  *     parameters:
  *       - in: path
  *         name: id
@@ -164,92 +136,19 @@ router.post('/tickets/:ticketId/close', ticketController.closeTicket);
  *         description: Ticket supprimé avec succès
  *       404:
  *         description: Ticket non trouvé
+ *       500:
+ *         description: Erreur serveur
  */
-router.delete('/tickets/:id', ticketController.deleteTicket);
+router.delete('/tickets/:id', deleteTicket);
 
-/**
- * @swagger
- * /tickets/{id}/affecter:
- *   put:
- *     summary: Affecter un collaborateur à un ticket
- *     tags: [Tickets]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: ID du ticket à affecter
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - collaborateurId
- *             properties:
- *               collaborateurId:
- *                 type: string
- *                 description: ID du collaborateur
- *     responses:
- *       200:
- *         description: Collaborateur affecté avec succès
- *       404:
- *         description: Ticket ou collaborateur non trouvé
- */
-router.put('/tickets/:id/affecter', ticketController.assignCollaborator);
-
-/**
- * @swagger
- * /tickets/affectes/{collaborateurId}:
- *   get:
- *     summary: Récupérer les tickets affectés à un collaborateur
- *     tags: [Tickets]
- *     parameters:
- *       - in: path
- *         name: collaborateurId
- *         required: true
- *         description: ID du collaborateur
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Liste des tickets affectés au collaborateur
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   _id:
- *                     type: string
- *                     description: ID unique du ticket
- *                   numeroTicket:
- *                     type: string
- *                     description: Numéro unique du ticket
- *                   priorite:
- *                     type: integer
- *                     description: Priorité du ticket
- *                   sujet:
- *                     type: string
- *                     description: Sujet du ticket
- *                   collaborateur:
- *                     type: string
- *                     description: ID du collaborateur
- */
-router.get('/tickets/affectes/:collaborateurId', ticketController.getAssignedTickets);
-
-
-
-router.put('/tickets/:id/update-timer', ticketController.updateTimer);
-
-router.put('/tickets/:id/remove-timer', (req, res, next) => {
-    console.log(`Requête reçue pour supprimer le timer du ticket : ${req.params.id}`);
-    next(); // Passe au contrôleur
-}, ticketController.removeTimer);
-
-
+router.get("/check-alerts", async (req, res) => {
+    try {
+        await checkForAlerts(req.app.locals.client); // ✅ Vérifie les alertes et envoie sur Discord
+        res.status(200).json({ message: "Vérification des alertes effectuée." });
+    } catch (error) {
+        console.error("❌ Erreur lors de la vérification des alertes :", error);
+        res.status(500).json({ message: "Erreur lors de la vérification des alertes." });
+    }
+});
 
 module.exports = router;
