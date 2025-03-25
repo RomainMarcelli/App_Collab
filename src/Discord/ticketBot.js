@@ -33,7 +33,7 @@ ticketClient.once("ready", () => {
 
 // 🔍 **Vérifie si des tickets ont dépassé leur `alertTime` et envoie une alerte**
 const checkForAlerts = async () => {
-    console.log("🔍 Vérification des tickets en retard...");
+    // console.log("🔍 Vérification des tickets en retard...");
 
     try {
         const now = new Date();
@@ -45,7 +45,7 @@ const checkForAlerts = async () => {
         }).sort({ alertTime: 1 });
 
         if (alertTickets.length === 0) {
-            console.log("✅ Aucun ticket à signaler.");
+            // console.log("✅ Aucun ticket à signaler.");
             return;
         }
 
@@ -59,7 +59,7 @@ const checkForAlerts = async () => {
             console.log(`⚠️ Envoi d'une alerte pour le ticket ${ticket.ticketNumber}...`);
 
             // 🔥 Message personnalisé
-            const alertMessage = `🚨 **Pouvez-vous traiter le ticket "${ticket.ticketNumber}" svp ? C'est une P${ticket.priority}** 🚨`;
+            const alertMessage = `Pouvez-vous traiter le ticket **"${ticket.ticketNumber}"** svp ? C'est une **P${ticket.priority}**`;
 
             await channel.send(alertMessage);
 
@@ -129,3 +129,4 @@ ticketClient.login(process.env.DISCORD_TICKET_BOT_TOKEN).catch(err => {
 });
 
 module.exports = { ticketClient };
+

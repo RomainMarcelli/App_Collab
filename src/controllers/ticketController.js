@@ -25,8 +25,10 @@ const calculateDeadline = (priority, lastUpdate) => {
 
     if (priority === "4" || priority === "5") {
         if (adjustedDate.getHours() >= 18 || adjustedDate.getHours() < businessStartHour) {
+            // Avancer au jour ouvré suivant à 9h
+            adjustedDate = addBusinessDays(adjustedDate, 1);
             adjustedDate.setHours(businessStartHour, 0, 0, 0);
-        }
+        }        
         return addBusinessDays(adjustedDate, priority === "4" ? 3 : 5);
     }
 
@@ -46,8 +48,11 @@ const calculateAlertTime = (priority, lastUpdate) => {
 
     if (priority === "4" || priority === "5") {
         if (adjustedDate.getHours() >= 18 || adjustedDate.getHours() < businessStartHour) {
+            // Avancer au jour ouvré suivant à 9h
+            adjustedDate = addBusinessDays(adjustedDate, 1);
             adjustedDate.setHours(businessStartHour, 0, 0, 0);
         }
+        
         return addBusinessDays(adjustedDate, priority === "4" ? 2 : 4);
     }
 
@@ -100,7 +105,7 @@ exports.saveExtractedTickets = async (req, res) => {
 
         // ✅ Insertion des nouveaux tickets
         await Ticket.insertMany(validTickets);
-        console.log("✅ Tickets enregistrés avec succès !");
+        // console.log("✅ Tickets enregistrés avec succès !");
         res.status(201).json({ message: "Tickets enregistrés avec succès !" });
 
     } catch (error) {
@@ -172,7 +177,7 @@ exports.updateTicket = async (req, res) => {
 
 
 exports.checkForAlerts = async (client) => {
-    console.log("🔍 Vérification des alertes en cours...");
+    // console.log("Vérification des alertes en cours...");
 
     try {
         const now = new Date();
@@ -184,7 +189,7 @@ exports.checkForAlerts = async (client) => {
         }).sort({ alertTime: 1 });
 
         if (alertTickets.length === 0) {
-            console.log("✅ Aucune alerte à envoyer.");
+            // console.log("✅ Aucune alerte à envoyer.");
             return;
         }
 
@@ -195,17 +200,17 @@ exports.checkForAlerts = async (client) => {
         }
 
         for (const ticket of alertTickets) {
-            console.log(`⚠️ Envoi d'une alerte pour le ticket ${ticket.ticketNumber}...`);
+            // console.log(`⚠️ Envoi d'une alerte pour le ticket ${ticket.ticketNumber}...`);
 
             // 🔥 Message personnalisé
-            const alertMessage = `🚨 **Pouvez-vous traiter le ticket "${ticket.ticketNumber}" svp ? C'est une P${ticket.priority}** 🚨`;
+            const alertMessage = `Pouvez-vous traiter le ticket **"${ticket.ticketNumber}"** svp ? C'est une **P${ticket.priority}**`;
 
             await channel.send(alertMessage);
 
             // ✅ Marque le ticket comme alerté
             await Ticket.updateOne({ _id: ticket._id }, { alertSent: true });
 
-            console.log(`✅ Alerte envoyée pour le ticket ${ticket.ticketNumber}`);
+            // console.log(`✅ Alerte envoyée pour le ticket ${ticket.ticketNumber}`);
         }
     } catch (error) {
         console.error("❌ Erreur lors de la vérification des alertes :", error);

@@ -14,11 +14,14 @@ const calculateDeadline = (priority, createdAt = null) => {
     if (priority === "4" || priority === "5") {
         let adjustedCreatedAt = new Date(createdAt);
         if (adjustedCreatedAt.getHours() >= 18 || adjustedCreatedAt.getHours() < businessStartHour) {
-            adjustedCreatedAt.setHours(businessStartHour, 0, 0, 0); // Ajuste au début de la journée de travail
+            // Avancer au jour ouvré suivant à 9h
+            adjustedCreatedAt = addBusinessDays(adjustedCreatedAt, 1);
+            adjustedCreatedAt.setHours(businessStartHour, 0, 0, 0);
         }
+
         return addBusinessDays(adjustedCreatedAt, priority === "4" ? 3 : 5);
     }
-    
+
     switch (priority) {
         case "1": return new Date(now.getTime() + 1 * 60 * 60 * 1000);
         case "2": return new Date(now.getTime() + 2 * 60 * 60 * 1000);
@@ -31,10 +34,12 @@ const calculateAlertTime = (priority, createdAt) => {
     const businessStartHour = 9;
     let alertOffset;
     let useBusinessDays = false;
-    
+
     if (priority === "4" || priority === "5") {
         let adjustedCreatedAt = new Date(createdAt);
         if (adjustedCreatedAt.getHours() >= 18 || adjustedCreatedAt.getHours() < businessStartHour) {
+            // Avancer au jour ouvré suivant à 9h
+            adjustedCreatedAt = addBusinessDays(adjustedCreatedAt, 1);
             adjustedCreatedAt.setHours(businessStartHour, 0, 0, 0);
         }
         return addBusinessDays(adjustedCreatedAt, priority === "4" ? 2 : 4);

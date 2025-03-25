@@ -20,7 +20,7 @@ const App = () => {
                     <Route path="/timer-view" element={<TimerManagerWithForm />} />
                     <Route path="/tickets" element={<TicketsList />} /> */}
                     {/* Route par défaut */}
-                    <Route exact path="/" element={<Notif />} />
+                    <Route exact path="/" element={<TicketsList />} />
                 </Routes>
             </div>
         </Router>
