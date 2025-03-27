@@ -1,7 +1,9 @@
 require("dotenv").config();
 const { Client, GatewayIntentBits } = require("discord.js");
 const mongoose = require("mongoose");
-const Ticket = require("../models/ticketModel"); 
+const Ticket = require("../models/ticketModel");
+const { EmbedBuilder } = require("discord.js");
+
 
 // ✅ Création du client Discord
 const ticketClient = new Client({
@@ -37,40 +39,68 @@ const checkForAlerts = async () => {
 
     try {
         const now = new Date();
-
-        // 🔎 Récupère les tickets dont l'alertTime est dépassé et qui n'ont pas encore été signalés
+    
         const alertTickets = await Ticket.find({
             alertTime: { $lte: now },
             alertSent: false
         }).sort({ alertTime: 1 });
-
-        if (alertTickets.length === 0) {
-            // console.log("✅ Aucun ticket à signaler.");
-            return;
-        }
-
+    
+        if (alertTickets.length === 0) return;
+    
         const channel = ticketClient.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
         if (!channel) {
-            console.error("❌ Impossible de trouver le canal Discord ! Vérifie l'ID.");
+            console.error("❌ Canal Discord introuvable. Vérifie l'ID.");
             return;
         }
-
+    
         for (const ticket of alertTickets) {
-            console.log(`⚠️ Envoi d'une alerte pour le ticket ${ticket.ticketNumber}...`);
-
-            // 🔥 Message personnalisé
-            const alertMessage = `Pouvez-vous traiter le ticket **"${ticket.ticketNumber}"** svp ? C'est une **P${ticket.priority}**`;
-
-            await channel.send(alertMessage);
-
-            // ✅ Marque le ticket comme alerté pour éviter les doublons
-            await Ticket.updateOne({ _id: ticket._id }, { alertSent: true });
-
-            console.log(`✅ Alerte envoyée pour le ticket ${ticket.ticketNumber}`);
+            const result = await Ticket.updateOne(
+                { _id: ticket._id, alertSent: false },
+                { alertSent: true }
+            );
+    
+            if (result.modifiedCount === 0) {
+                console.log(`⏭️ Ticket ${ticket.ticketNumber} déjà traité. Ignoré.`);
+                continue;
+            }
+    
+            const deadlineDate = new Date(ticket.deadline);
+            const diffMs = deadlineDate - now;
+            let timeRemaining = "";
+    
+            if (diffMs > 0) {
+                const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                timeRemaining = ` (${hours}h${minutes > 0 ? `${minutes}min` : ""} restantes)`;
+            } else {
+                timeRemaining = " (⏰ dépassée)";
+            }
+    
+            const type = ticket.ticketNumber?.startsWith("S")
+                ? "Service"
+                : ticket.ticketNumber?.startsWith("I")
+                ? "Incident"
+                : "Ticket";
+    
+            const deadlineFormatted = deadlineDate.toLocaleString("fr-FR", {
+                timeZone: "Europe/Paris",
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit"
+            });
+    
+            const message = `Client : Nhood\n${type} **P${ticket.priority}**, merci de traiter le ticket "**${ticket.ticketNumber}**" svp - Deadline : ${deadlineFormatted}${timeRemaining}`;
+    
+            await channel.send(message);
+            console.log(`✅ Message envoyé pour ${ticket.ticketNumber}`);
         }
     } catch (error) {
         console.error("❌ Erreur lors de la vérification des alertes :", error);
-    }
+    }    
+    
 };
 
 // ✅ Commande !alltickets pour voir tous les tickets
