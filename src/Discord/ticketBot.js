@@ -65,16 +65,41 @@ const checkForAlerts = async () => {
             }
     
             const deadlineDate = new Date(ticket.deadline);
-            const diffMs = deadlineDate - now;
-            let timeRemaining = "";
     
-            if (diffMs > 0) {
-                const hours = Math.floor(diffMs / (1000 * 60 * 60));
-                const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                timeRemaining = ` (${hours}h${minutes > 0 ? `${minutes}min` : ""} restantes)`;
-            } else {
-                timeRemaining = " (⏰ dépassée)";
+            // 🧠 Calcul du temps restant en heures ouvrées (9h-18h)
+            const WORK_START = 9;
+            const WORK_END = 18;
+            let tempDate = new Date(now);
+            let timeRemainingHours = 0;
+    
+            while (tempDate < deadlineDate) {
+                const day = tempDate.getDay();
+                if (day !== 0 && day !== 6) { // Exclure week-end
+                    const workDayStart = new Date(tempDate);
+                    workDayStart.setHours(WORK_START, 0, 0, 0);
+    
+                    const workDayEnd = new Date(tempDate);
+                    workDayEnd.setHours(WORK_END, 0, 0, 0);
+    
+                    if (tempDate < workDayEnd) {
+                        const from = tempDate > workDayStart ? tempDate : workDayStart;
+                        const to = deadlineDate < workDayEnd ? deadlineDate : workDayEnd;
+    
+                        if (to > from) {
+                            timeRemainingHours += (to - from) / (1000 * 60 * 60);
+                        }
+                    }
+                }
+    
+                // Passer au jour suivant
+                tempDate.setDate(tempDate.getDate() + 1);
+                tempDate.setHours(0, 0, 0, 0);
             }
+    
+            const timeRemaining =
+                timeRemainingHours <= 0
+                    ? " (dépassée)"
+                    : ` (${Math.floor(timeRemainingHours)}h${Math.round((timeRemainingHours % 1) * 60)}min restantes)`;
     
             const type = ticket.ticketNumber?.startsWith("S")
                 ? "Service"
@@ -92,15 +117,19 @@ const checkForAlerts = async () => {
                 second: "2-digit"
             });
     
-            const message = `Client : Nhood\n${type} **P${ticket.priority}**, merci de traiter le ticket "**${ticket.ticketNumber}**" svp - Deadline : ${deadlineFormatted}${timeRemaining}`;
+            const embed = new EmbedBuilder()
+                .setColor(0x00ff00)
+                .setTitle("Client : Nhood")
+                .setDescription(
+                    `${type} P${ticket.priority}, merci de traiter le ticket "**${ticket.ticketNumber}**" svp - Deadline : **${deadlineFormatted}**${timeRemaining}`
+                );
     
-            await channel.send(message);
-            console.log(`✅ Message envoyé pour ${ticket.ticketNumber}`);
+            await channel.send({ embeds: [embed] });
+            console.log(`✅ Embed envoyé pour ${ticket.ticketNumber}`);
         }
     } catch (error) {
         console.error("❌ Erreur lors de la vérification des alertes :", error);
-    }    
-    
+    }
 };
 
 // ✅ Commande !alltickets pour voir tous les tickets
@@ -159,4 +188,3 @@ ticketClient.login(process.env.DISCORD_TICKET_BOT_TOKEN).catch(err => {
 });
 
 module.exports = { ticketClient };
-
