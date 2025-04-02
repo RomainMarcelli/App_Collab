@@ -128,7 +128,7 @@ const TicketsList = () => {
               `}>
                                 <p className="text-lg font-semibold">🏷️ {ticket.ticketNumber}</p>
                                 <p className="text-gray-600"><strong>📌 Priorité :</strong> {ticket.priority}</p>
-                                <p className="text-gray-600"><strong>📅 Créé :</strong> {new Date(ticket.createdAt).toLocaleString()}</p>
+                                <p className="text-gray-600"><strong>📅 Créé à :</strong> {new Date(ticket.lastUpdate).toLocaleString()}</p>
                                 <p className="text-gray-700 font-semibold"><strong>⏳ Deadline :</strong> {new Date(ticket.deadline).toLocaleString()}</p>
                                 <p className="text-gray-700"><strong>🔔 Alerte prévue :</strong> {new Date(ticket.alertTime).toLocaleString()}</p>
                             </li>
