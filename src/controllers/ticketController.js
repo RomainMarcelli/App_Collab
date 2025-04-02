@@ -24,11 +24,14 @@ const calculateDeadline = (priority, lastUpdate) => {
     let adjustedDate = new Date(lastUpdate);
 
     if (priority === "4" || priority === "5") {
-        if (adjustedDate.getHours() >= 18 || adjustedDate.getHours() < businessStartHour) {
-            // Avancer au jour ouvré suivant à 9h
+        if (adjustedDate.getHours() >= 18) {
+            // Créé après 18h → passe au jour ouvré suivant à 9h
             adjustedDate = addBusinessDays(adjustedDate, 1);
-            adjustedDate.setHours(businessStartHour, 0, 0, 0);
-        }        
+            adjustedDate.setHours(9, 0, 0, 0);
+        } else if (adjustedDate.getHours() < 9) {
+            // Créé avant 9h → reste aujourd’hui, mais commence à 9h
+            adjustedDate.setHours(9, 0, 0, 0);
+        }
         return addBusinessDays(adjustedDate, priority === "4" ? 3 : 5);
     }
 
@@ -47,12 +50,14 @@ const calculateAlertTime = (priority, lastUpdate) => {
     let adjustedDate = new Date(lastUpdate);
 
     if (priority === "4" || priority === "5") {
-        if (adjustedDate.getHours() >= 18 || adjustedDate.getHours() < businessStartHour) {
-            // Avancer au jour ouvré suivant à 9h
+        if (adjustedDate.getHours() >= 18) {
+            // Créé après 18h → passe au jour ouvré suivant à 9h
             adjustedDate = addBusinessDays(adjustedDate, 1);
-            adjustedDate.setHours(businessStartHour, 0, 0, 0);
+            adjustedDate.setHours(9, 0, 0, 0);
+        } else if (adjustedDate.getHours() < 9) {
+            // Créé avant 9h → reste aujourd’hui, mais commence à 9h
+            adjustedDate.setHours(9, 0, 0, 0);
         }
-        
         return addBusinessDays(adjustedDate, priority === "4" ? 2 : 4);
     }
 
@@ -75,9 +80,17 @@ exports.saveExtractedTickets = async (req, res) => {
             return res.status(400).json({ message: "Aucun ticket fourni." });
         }
 
-        // 🔥 Supprime tous les anciens tickets avant d'insérer les nouveaux
-        await Ticket.deleteMany({});
-        console.log("🗑️ Anciennes données supprimées !");
+        // 🧠 Récupère tous les numéros de tickets de l'import
+        const importedTicketNumbers = tickets
+            .filter(ticket => ticket.ticketNumber)
+            .map(ticket => ticket.ticketNumber);
+
+        // 🗑️ Supprime uniquement les tickets qui ne sont pas dans l'import
+        await Ticket.deleteMany({
+            ticketNumber: { $nin: importedTicketNumbers }
+        });
+        console.log("🧹 Tickets obsolètes supprimés !");
+
 
         // ✅ Transformation et conversion des dates
         const validTickets = tickets
@@ -103,8 +116,13 @@ exports.saveExtractedTickets = async (req, res) => {
             return res.status(400).json({ message: "Aucun ticket valide à enregistrer." });
         }
 
-        // ✅ Insertion des nouveaux tickets
-        await Ticket.insertMany(validTickets);
+        for (const ticket of validTickets) {
+            await Ticket.updateOne(
+                { ticketNumber: ticket.ticketNumber },
+                { $set: ticket },
+                { upsert: true }
+            );
+        }
         // console.log("✅ Tickets enregistrés avec succès !");
         res.status(201).json({ message: "Tickets enregistrés avec succès !" });
 
