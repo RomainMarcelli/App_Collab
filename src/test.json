@@ -1,0 +1,11 @@
+{
+    "ticketNumber": "S250325_098",
+    "priority": "3",
+    "lastUpdate": "2025-04-04T10:00:00.000Z",
+    "createdAt": "2025-04-04T10:00:00.000Z",
+    "deadline": "2025-04-04T12:00:00.000Z",   
+    "alertTime": "2025-04-04T08:00:00.000Z",  
+    "alertSent": false,
+    "lastHourAlertSent": false
+  }
+  

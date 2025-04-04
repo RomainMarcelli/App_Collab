@@ -35,79 +35,67 @@ ticketClient.once("ready", () => {
 
 // 🔍 **Vérifie si des tickets ont dépassé leur `alertTime` et envoie une alerte**
 const checkForAlerts = async () => {
-    // console.log("🔍 Vérification des tickets en retard...");
-
     try {
         const now = new Date();
-    
-        const alertTickets = await Ticket.find({
-            alertTime: { $lte: now },
-            alertSent: false
-        }).sort({ alertTime: 1 });
-    
-        if (alertTickets.length === 0) return;
-    
+
+        const tickets = await Ticket.find().sort({ alertTime: 1 });
+
         const channel = ticketClient.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
         if (!channel) {
             console.error("❌ Canal Discord introuvable. Vérifie l'ID.");
             return;
         }
-    
-        for (const ticket of alertTickets) {
-            const result = await Ticket.updateOne(
-                { _id: ticket._id, alertSent: false },
-                { alertSent: true }
-            );
-    
-            if (result.modifiedCount === 0) {
-                console.log(`⏭️ Ticket ${ticket.ticketNumber} déjà traité. Ignoré.`);
-                continue;
-            }
-    
-            const deadlineDate = new Date(ticket.deadline);
-    
-            // 🧠 Calcul du temps restant en heures ouvrées (9h-18h)
+
+        for (const ticket of tickets) {
+            const deadline = new Date(ticket.deadline);
+            let timeRemainingHours = 0;
+            let tempDate = new Date(now);
             const WORK_START = 9;
             const WORK_END = 18;
-            let tempDate = new Date(now);
-            let timeRemainingHours = 0;
-    
-            while (tempDate < deadlineDate) {
+
+            // 🔁 Calcul du temps ouvré restant
+            while (tempDate < deadline) {
                 const day = tempDate.getDay();
-                if (day !== 0 && day !== 6) { // Exclure week-end
-                    const workDayStart = new Date(tempDate);
-                    workDayStart.setHours(WORK_START, 0, 0, 0);
-    
-                    const workDayEnd = new Date(tempDate);
-                    workDayEnd.setHours(WORK_END, 0, 0, 0);
-    
-                    if (tempDate < workDayEnd) {
-                        const from = tempDate > workDayStart ? tempDate : workDayStart;
-                        const to = deadlineDate < workDayEnd ? deadlineDate : workDayEnd;
-    
+                if (day !== 0 && day !== 6) {
+                    const workStart = new Date(tempDate);
+                    workStart.setHours(WORK_START, 0, 0, 0);
+                    const workEnd = new Date(tempDate);
+                    workEnd.setHours(WORK_END, 0, 0, 0);
+
+                    if (tempDate < workEnd) {
+                        const from = tempDate > workStart ? tempDate : workStart;
+                        const to = deadline < workEnd ? deadline : workEnd;
+
                         if (to > from) {
                             timeRemainingHours += (to - from) / (1000 * 60 * 60);
                         }
                     }
                 }
-    
-                // Passer au jour suivant
                 tempDate.setDate(tempDate.getDate() + 1);
                 tempDate.setHours(0, 0, 0, 0);
             }
-    
+
+            let fullHours = Math.floor(timeRemainingHours);
+            let remainingMinutes = Math.round((timeRemainingHours % 1) * 60);
+            if (remainingMinutes === 60) {
+                fullHours += 1;
+                remainingMinutes = 0;
+            }
+
             const timeRemaining =
                 timeRemainingHours <= 0
                     ? " (dépassée)"
-                    : ` (${Math.floor(timeRemainingHours)}h${Math.round((timeRemainingHours % 1) * 60)}min restantes)`;
-    
+                    : remainingMinutes === 0
+                        ? ` (${fullHours}h restantes)`
+                        : ` (${fullHours}h${remainingMinutes}min restantes)`;
+
             const type = ticket.ticketNumber?.startsWith("S")
                 ? "Service"
                 : ticket.ticketNumber?.startsWith("I")
-                ? "Incident"
-                : "Ticket";
-    
-            const deadlineFormatted = deadlineDate.toLocaleString("fr-FR", {
+                    ? "Incident"
+                    : "Ticket";
+
+            const deadlineFormatted = deadline.toLocaleString("fr-FR", {
                 timeZone: "Europe/Paris",
                 day: "2-digit",
                 month: "2-digit",
@@ -116,21 +104,40 @@ const checkForAlerts = async () => {
                 minute: "2-digit",
                 second: "2-digit"
             });
-    
-            const embed = new EmbedBuilder()
-                .setColor(0x00ff00)
-                .setTitle("Client : Nhood")
-                .setDescription(
-                    `${type} P${ticket.priority}, merci de traiter le ticket "**${ticket.ticketNumber}**" svp - Deadline : **${deadlineFormatted}**${timeRemaining}`
-                );
-    
-            await channel.send({ embeds: [embed] });
-            console.log(`✅ Embed envoyé pour ${ticket.ticketNumber}`);
+
+            // ✅ Alerte VERT classique (une seule fois)
+            if (!ticket.alertSent && new Date(ticket.alertTime) <= now) {
+                const greenEmbed = new EmbedBuilder()
+                    .setColor(0x00ff00)
+                    .setTitle("Client : Nhood")
+                    .setDescription(
+                        `${type} P${ticket.priority}, merci de traiter le ticket "**${ticket.ticketNumber}**" svp - Deadline : **${deadlineFormatted}**${timeRemaining}`
+                    );
+                await channel.send({ embeds: [greenEmbed] });
+                console.log(`✅ Message VERT envoyé pour ${ticket.ticketNumber}`);
+
+                await Ticket.updateOne({ _id: ticket._id }, { alertSent: true });
+            }
+
+            // ✅ Alerte ROUGE si ≤ 2h avant la deadline (une seule fois)
+            if (!ticket.lastHourAlertSent && timeRemainingHours <= 2) {
+                const redEmbed = new EmbedBuilder()
+                    .setColor(0xff0000)
+                    .setTitle("Client : Nhood")
+                    .setDescription(
+                        `${type} P${ticket.priority}, le ticket "**${ticket.ticketNumber}**" arrive à échéance dans moins de 2h !\nDeadline : **${deadlineFormatted}**${timeRemaining}`
+                    );
+                await channel.send({ embeds: [redEmbed] });
+                console.log(`🔴 Message ROUGE envoyé pour ${ticket.ticketNumber}`);
+
+                await Ticket.updateOne({ _id: ticket._id }, { lastHourAlertSent: true });
+            }
         }
     } catch (error) {
         console.error("❌ Erreur lors de la vérification des alertes :", error);
     }
 };
+
 
 // ✅ Commande !alltickets pour voir tous les tickets
 ticketClient.on("messageCreate", async (message) => {

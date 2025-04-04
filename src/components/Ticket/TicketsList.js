@@ -131,6 +131,43 @@ const TicketsList = () => {
                                 <p className="text-gray-600"><strong>📅 Créé à :</strong> {new Date(ticket.lastUpdate).toLocaleString()}</p>
                                 <p className="text-gray-700 font-semibold"><strong>⏳ Deadline :</strong> {new Date(ticket.deadline).toLocaleString()}</p>
                                 <p className="text-gray-700"><strong>🔔 Alerte prévue :</strong> {new Date(ticket.alertTime).toLocaleString()}</p>
+                                <p className="text-gray-600 italic">
+                                    {(() => {
+                                        const WORK_START = 9;
+                                        const WORK_END = 18;
+                                        let now = new Date();
+                                        let deadline = new Date(ticket.deadline);
+                                        let tempDate = new Date(now);
+                                        let totalHours = 0;
+
+                                        while (tempDate < deadline) {
+                                            const day = tempDate.getDay();
+                                            if (day !== 0 && day !== 6) { // Exclure week-end
+                                                const workStart = new Date(tempDate);
+                                                workStart.setHours(WORK_START, 0, 0, 0);
+
+                                                const workEnd = new Date(tempDate);
+                                                workEnd.setHours(WORK_END, 0, 0, 0);
+
+                                                if (tempDate < workEnd) {
+                                                    const from = tempDate > workStart ? tempDate : workStart;
+                                                    const to = deadline < workEnd ? deadline : workEnd;
+                                                    if (to > from) {
+                                                        totalHours += (to - from) / (1000 * 60 * 60);
+                                                    }
+                                                }
+                                            }
+                                            // Passer au jour suivant
+                                            tempDate.setDate(tempDate.getDate() + 1);
+                                            tempDate.setHours(0, 0, 0, 0);
+                                        }
+
+                                        if (totalHours <= 0) return "Temps écoulé";
+                                        const fullHours = Math.floor(totalHours);
+                                        const minutes = Math.round((totalHours % 1) * 60);
+                                        return `${fullHours}h${minutes > 0 ? ` ${minutes}min` : ""} restantes`;
+                                    })()}
+                                </p>
                             </li>
                         ))}
                     </ul>

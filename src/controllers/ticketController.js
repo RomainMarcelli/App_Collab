@@ -64,7 +64,7 @@ const calculateAlertTime = (priority, lastUpdate) => {
     switch (priority) {
         case "1": alertOffset = 10 / 3600; break;
         case "2": alertOffset = 15 / 60; break;
-        case "3": alertOffset = 5; break;
+        case "3": alertOffset = 4; break;
         default: alertOffset = 0;
     }
     return addBusinessHours(adjustedDate, alertOffset);
