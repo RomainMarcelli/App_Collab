@@ -61,7 +61,7 @@ const TicketsList = () => {
         if (searchTerm) filtered = filtered.filter(ticket => ticket.ticketNumber.toLowerCase().includes(searchTerm.toLowerCase()));
 
         // ✅ Trie les tickets par ordre croissant d'alertTime
-        filtered.sort((a, b) => new Date(a.alertTime) - new Date(b.alertTime));
+        filtered.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
 
         setFilteredTickets(filtered);
     };
