@@ -7,6 +7,7 @@ const ticketBot = require("./ticketBot"); // ✅ Import du fichier ticketBot.js
 
 // ✅ Création du client Discord
 const client = new Client({
+    partials: ['MESSAGE', 'CHANNEL', 'REACTION'],
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
@@ -26,7 +27,7 @@ mongoose.connect(process.env.MONGO_URI, {
 // ✅ Vérification de la connexion du bot
 client.once("ready", () => {
     console.log(`✅ Bot connecté en tant que ${client.user.tag}`);
-    
+
     const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
     if (!channel) {
         console.error("❌ Impossible de trouver le canal Discord ! Vérifie l'ID.");
@@ -88,37 +89,59 @@ client.on("messageCreate", async (message) => {
     }
 });
 
-
 client.on("messageReactionAdd", async (reaction, user) => {
-    if (user.bot) return; // Ignore les réactions des bots
+    if (user.bot) return;
 
-    // Vérifie que l'emoji est bien 👍
-    if (reaction.emoji.name === "👍") {
-        console.log(`✅ Réaction ajoutée par ${user.username} sur le message: ${reaction.emoji.name}`);
+    if (reaction.emoji.name !== "👍") return;
 
-        // Extraire le numéro du ticket depuis le message
-        const match = reaction.message.content.match(/[IS]\d{6}_\d{3}/);
+    console.log("📥 Réaction détectée !");
+    console.log(`✅ Réaction 👍 ajoutée par ${user.username}`);
 
+    try {
+        // Assure-toi que tout est bien chargé
+        if (reaction.partial) await reaction.fetch();
+        if (reaction.message.partial) await reaction.message.fetch();
+
+        // 💣 Supprime le message Discord en premier
+        try {
+            await reaction.message.delete();
+            console.log("🗑️ Message supprimé de Discord.");
+        } catch (err) {
+            console.error("❌ Erreur lors de la suppression du message :", err);
+        }
+
+        // 📦 Optionnel : suppression du ticket en base s'il existe
+        let messageContent = reaction.message.content || "";
+        if (!messageContent && reaction.message.embeds.length > 0) {
+            const embed = reaction.message.embeds[0];
+            if (embed.description) {
+                messageContent = embed.description;
+            } else if (embed.fields?.length) {
+                messageContent = embed.fields.map(f => `${f.name} ${f.value}`).join(" ");
+            }
+        }
+
+        console.log("📝 Contenu du message :", messageContent);
+
+        const match = messageContent.match(/(?:\*\*)?([A-Z]?\d{6}_\d{3})(?:\*\*)?/);
         if (!match) {
-            console.log("❌ Aucun numéro de ticket trouvé dans le message.");
+            console.log("ℹ️ Aucun numéro de ticket trouvé — pas grave.");
             return;
         }
 
-        const ticketNumber = match[0]; // Premier groupe trouvé = numéro de ticket
-        console.log(`⚡ Déclenchement de la suppression du ticket pour ${ticketNumber}`);
+        const ticketNumber = match[1];
+        console.log(`⚡ Tentative de suppression du ticket : ${ticketNumber}`);
 
-        try {
-            // Supprime le ticket dans MongoDB
-            const deletedTicket = await Notif.findOneAndDelete({ ticketNumber });
+        const deletedTicket = await Notif.findOneAndDelete({ ticketNumber });
 
-            if (!deletedTicket) {
-                console.log(`❌ Ticket ${ticketNumber} introuvable en BDD.`);
-                return;
-            }
-        } catch (error) {
-            console.error("❌ Erreur lors de la suppression du ticket:", error);
-            reaction.message.reply("❌ Une erreur s'est produite lors de la suppression du ticket.");
+        if (deletedTicket) {
+            console.log(`✅ Ticket ${ticketNumber} supprimé de la base de données.`);
+        } else {
+            console.log(`ℹ️ Ticket ${ticketNumber} introuvable dans la base de données (déjà supprimé ?).`);
         }
+
+    } catch (error) {
+        console.error("❌ Erreur générale lors du traitement de la réaction :", error);
     }
 });
 
