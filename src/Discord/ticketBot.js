@@ -203,11 +203,13 @@ ticketClient.on("messageCreate", async (message) => {
     if (args[0] === "!cleanmessages") {
         try {
             await cleanMessagesWithoutTicket(ticketClient);
+            await message.delete(); // 🔥 Supprime le message "!cleanmessages"
         } catch (err) {
             console.error("❌ Erreur pendant le nettoyage manuel :", err);
             message.reply("❌ Une erreur est survenue pendant le nettoyage.");
         }
     }
+
 });
 
 const cleanMessagesWithoutTicket = async (client) => {
