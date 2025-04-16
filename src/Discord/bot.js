@@ -30,7 +30,7 @@ client.once("ready", () => {
 
     const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
 
-    cleanMessagesWithoutTicket(client);
+    // cleanMessagesWithoutTicket(client);
 
     if (!channel) {
         console.error("❌ Impossible de trouver le canal Discord ! Vérifie l'ID.");
@@ -42,9 +42,9 @@ client.once("ready", () => {
         await checkForAlerts(client);
     }, 10 * 1000); // ✅ Vérifie les alertes toutes les 10 secondes
     // 🔁 Nettoyage toutes les heures
-    setInterval(() => {
-        cleanMessagesWithoutTicket(client);
-    }, 1000 * 60 * 60); // Toutes les heures
+    // setInterval(() => {
+    //     cleanMessagesWithoutTicket(client);
+    // }, 1000 * 60 * 60); // Toutes les heures
 
 });
 
@@ -153,58 +153,58 @@ client.on("messageReactionAdd", async (reaction, user) => {
     }
 });
 
-const cleanMessagesWithoutTicket = async (client) => {
-    const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
-    if (!channel) return console.error("❌ Canal non trouvé pour le nettoyage.");
+// const cleanMessagesWithoutTicket = async (client) => {
+//     const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
+//     if (!channel) return console.error("❌ Canal non trouvé pour le nettoyage.");
 
-    const now = Date.now();
-    const eightHours = 8 * 60 * 60 * 1000;
-    let deletedCount = 0;
+//     const now = Date.now();
+//     const eightHours = 8 * 60 * 60 * 1000;
+//     let deletedCount = 0;
 
-    try {
-        const messages = await channel.messages.fetch({ limit: 100 });
+//     try {
+//         const messages = await channel.messages.fetch({ limit: 100 });
 
-        for (const [, message] of messages) {
-            const age = now - message.createdTimestamp;
-            if (age < eightHours) continue;
+//         for (const [, message] of messages) {
+//             const age = now - message.createdTimestamp;
+//             if (age < eightHours) continue;
 
-            // 🧠 Cherche le contenu dans content OU embed
-            let text = message.content || "";
+//             // 🧠 Cherche le contenu dans content OU embed
+//             let text = message.content || "";
 
-            if (!text && message.embeds.length > 0) {
-                const embed = message.embeds[0];
-                if (embed.description) {
-                    text = embed.description;
-                } else if (embed.fields?.length) {
-                    text = embed.fields.map(f => `${f.name} ${f.value}`).join(" ");
-                }
-            }
+//             if (!text && message.embeds.length > 0) {
+//                 const embed = message.embeds[0];
+//                 if (embed.description) {
+//                     text = embed.description;
+//                 } else if (embed.fields?.length) {
+//                     text = embed.fields.map(f => `${f.name} ${f.value}`).join(" ");
+//                 }
+//             }
 
-            // 🧪 Extraction du numéro de ticket
-            const match = text.match(/(?:\*\*)?([A-Z]?\d{6}_\d{3})(?:\*\*)?/);
-            if (!match) continue;
+//             // 🧪 Extraction du numéro de ticket
+//             const match = text.match(/(?:\*\*)?([A-Z]?\d{6}_\d{3})(?:\*\*)?/);
+//             if (!match) continue;
 
-            const ticketNumber = match[1];
+//             const ticketNumber = match[1];
 
-            const ticketExists = await Notif.exists({ ticketNumber });
+//             const ticketExists = await Notif.exists({ ticketNumber });
 
-            if (!ticketExists) {
-                await message.delete();
-                console.log(`🧹 Message supprimé pour ticket inexistant : ${ticketNumber}`);
-                deletedCount++;
-            }
-        }
+//             if (!ticketExists) {
+//                 await message.delete();
+//                 console.log(`🧹 Message supprimé pour ticket inexistant : ${ticketNumber}`);
+//                 deletedCount++;
+//             }
+//         }
 
-    } catch (err) {
-        console.error("❌ Erreur pendant le nettoyage automatique :", err);
-    }
+//     } catch (err) {
+//         console.error("❌ Erreur pendant le nettoyage automatique :", err);
+//     }
 
-    if (deletedCount > 0) {
-        console.log(`✅ Nettoyage terminé : ${deletedCount} message(s) supprimé(s).`);
-    } else {
-        console.log("✅ Nettoyage terminé : aucun message à supprimer.");
-    }
-};
+//     if (deletedCount > 0) {
+//         console.log(`✅ Nettoyage terminé : ${deletedCount} message(s) supprimé(s).`);
+//     } else {
+//         console.log("✅ Nettoyage terminé : aucun message à supprimer.");
+//     }
+// };
 
 
 // ✅ Connexion du bot avec le token

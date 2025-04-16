@@ -70,6 +70,26 @@ const TicketsList = () => {
         handleFilter();
     }, [filterPriority, searchTerm, filterType, tickets]);
 
+    const sendTicketsToBackend = async (tickets) => {
+        try {
+            const response = await fetch("http://localhost:5000/api/tickets", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(tickets)
+            });
+
+            const result = await response.json();
+            console.log("✅ Envoi terminé :", result);
+            toast.success("Tickets envoyés avec succès !");
+        } catch (err) {
+            console.error("❌ Échec de l'envoi :", err);
+            toast.error("Erreur lors de l'envoi des tickets !");
+        }
+    };
+
+
     return (
         <>
             <Navbar />
@@ -107,6 +127,24 @@ const TicketsList = () => {
                     </select>
                 </div>
             </div>
+
+
+            {/* Bouton de test ticket  */}
+
+            <button
+                onClick={() =>
+                    sendTicketsToBackend([
+                        {
+                            ticketNumber: "I250414_979",
+                            priority: "2",
+                            lastUpdate: "16/04/2025 15:00:00",
+                        },
+                    ])
+                }
+                className="mt-6 mx-auto block bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:scale-105 hover:shadow-2xl transition duration-300 ease-in-out"
+            >
+                📤 Envoyer un ticket test
+            </button>
 
             {/* Liste des tickets */}
             <div className="max-w-2xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg border border-gray-200">
