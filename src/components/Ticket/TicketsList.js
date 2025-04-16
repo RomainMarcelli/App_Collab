@@ -61,7 +61,7 @@ const TicketsList = () => {
         if (searchTerm) filtered = filtered.filter(ticket => ticket.ticketNumber.toLowerCase().includes(searchTerm.toLowerCase()));
 
         // ✅ Trie les tickets par ordre croissant d'alertTime
-        filtered.sort((a, b) => new Date(a.alertTime) - new Date(b.alertTime));
+        filtered.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
 
         setFilteredTickets(filtered);
     };
@@ -69,6 +69,26 @@ const TicketsList = () => {
     useEffect(() => {
         handleFilter();
     }, [filterPriority, searchTerm, filterType, tickets]);
+
+    const sendTicketsToBackend = async (tickets) => {
+        try {
+            const response = await fetch("http://localhost:5000/api/tickets", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(tickets)
+            });
+
+            const result = await response.json();
+            console.log("✅ Envoi terminé :", result);
+            toast.success("Tickets envoyés avec succès !");
+        } catch (err) {
+            console.error("❌ Échec de l'envoi :", err);
+            toast.error("Erreur lors de l'envoi des tickets !");
+        }
+    };
+
 
     return (
         <>
@@ -108,6 +128,24 @@ const TicketsList = () => {
                 </div>
             </div>
 
+
+            {/* Bouton de test ticket  */}
+
+            <button
+                onClick={() =>
+                    sendTicketsToBackend([
+                        {
+                            ticketNumber: "I250414_979",
+                            priority: "2",
+                            lastUpdate: "16/04/2025 15:00:00",
+                        },
+                    ])
+                }
+                className="mt-6 mx-auto block bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:scale-105 hover:shadow-2xl transition duration-300 ease-in-out"
+            >
+                📤 Envoyer un ticket test
+            </button>
+
             {/* Liste des tickets */}
             <div className="max-w-2xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg border border-gray-200">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
@@ -131,6 +169,43 @@ const TicketsList = () => {
                                 <p className="text-gray-600"><strong>📅 Créé à :</strong> {new Date(ticket.lastUpdate).toLocaleString()}</p>
                                 <p className="text-gray-700 font-semibold"><strong>⏳ Deadline :</strong> {new Date(ticket.deadline).toLocaleString()}</p>
                                 <p className="text-gray-700"><strong>🔔 Alerte prévue :</strong> {new Date(ticket.alertTime).toLocaleString()}</p>
+                                <p className="text-gray-600 italic">
+                                    {(() => {
+                                        const WORK_START = 9;
+                                        const WORK_END = 18;
+                                        let now = new Date();
+                                        let deadline = new Date(ticket.deadline);
+                                        let tempDate = new Date(now);
+                                        let totalHours = 0;
+
+                                        while (tempDate < deadline) {
+                                            const day = tempDate.getDay();
+                                            if (day !== 0 && day !== 6) { // Exclure week-end
+                                                const workStart = new Date(tempDate);
+                                                workStart.setHours(WORK_START, 0, 0, 0);
+
+                                                const workEnd = new Date(tempDate);
+                                                workEnd.setHours(WORK_END, 0, 0, 0);
+
+                                                if (tempDate < workEnd) {
+                                                    const from = tempDate > workStart ? tempDate : workStart;
+                                                    const to = deadline < workEnd ? deadline : workEnd;
+                                                    if (to > from) {
+                                                        totalHours += (to - from) / (1000 * 60 * 60);
+                                                    }
+                                                }
+                                            }
+                                            // Passer au jour suivant
+                                            tempDate.setDate(tempDate.getDate() + 1);
+                                            tempDate.setHours(0, 0, 0, 0);
+                                        }
+
+                                        if (totalHours <= 0) return "Temps écoulé";
+                                        const fullHours = Math.floor(totalHours);
+                                        const minutes = Math.round((totalHours % 1) * 60);
+                                        return `${fullHours}h${minutes > 0 ? ` ${minutes}min` : ""} restantes`;
+                                    })()}
+                                </p>
                             </li>
                         ))}
                     </ul>

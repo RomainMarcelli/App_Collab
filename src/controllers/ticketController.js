@@ -43,32 +43,36 @@ const calculateDeadline = (priority, lastUpdate) => {
     }
 };
 
-// ✅ Calcul de l'alerte en fonction de la priorité
 const calculateAlertTime = (priority, lastUpdate) => {
-    const businessStartHour = 9;
-    let alertOffset;
     let adjustedDate = new Date(lastUpdate);
 
     if (priority === "4" || priority === "5") {
         if (adjustedDate.getHours() >= 18) {
-            // Créé après 18h → passe au jour ouvré suivant à 9h
             adjustedDate = addBusinessDays(adjustedDate, 1);
             adjustedDate.setHours(9, 0, 0, 0);
         } else if (adjustedDate.getHours() < 9) {
-            // Créé avant 9h → reste aujourd’hui, mais commence à 9h
             adjustedDate.setHours(9, 0, 0, 0);
         }
-        return addBusinessDays(adjustedDate, priority === "4" ? 2 : 4);
+
+        const deadline = calculateDeadline(priority, adjustedDate);
+        return new Date(deadline.getTime() - 3 * 60 * 60 * 1000); // 3h avant
     }
 
+    // 👇 Calcul spécifique pour P2 et P3 : à partir de la deadline !
+    const deadline = calculateDeadline(priority, adjustedDate);
+
     switch (priority) {
-        case "1": alertOffset = 10 / 3600; break;
-        case "2": alertOffset = 15 / 60; break;
-        case "3": alertOffset = 5; break;
-        default: alertOffset = 0;
+        case "1":
+            return addBusinessHours(adjustedDate, 10 / 3600); // 10s
+        case "2":
+            return new Date(deadline.getTime() - 1 * 60 * 60 * 1000); // 1h avant
+        case "3":
+            return new Date(deadline.getTime() - 1.5 * 60 * 60 * 1000); // 1h30 avant
+        default:
+            return adjustedDate;
     }
-    return addBusinessHours(adjustedDate, alertOffset);
 };
+
 
 // ✅ Enregistre les tickets en supprimant les anciens avant
 exports.saveExtractedTickets = async (req, res) => {
@@ -80,34 +84,33 @@ exports.saveExtractedTickets = async (req, res) => {
             return res.status(400).json({ message: "Aucun ticket fourni." });
         }
 
-        // 🧠 Récupère tous les numéros de tickets de l'import
         const importedTicketNumbers = tickets
             .filter(ticket => ticket.ticketNumber)
             .map(ticket => ticket.ticketNumber);
 
-        // 🗑️ Supprime uniquement les tickets qui ne sont pas dans l'import
         await Ticket.deleteMany({
             ticketNumber: { $nin: importedTicketNumbers }
         });
+
         console.log("🧹 Tickets obsolètes supprimés !");
 
-
-        // ✅ Transformation et conversion des dates
         const validTickets = tickets
             .filter(ticket => ticket.ticketNumber && ticket.priority && ticket.lastUpdate)
             .map(ticket => {
                 const parsedLastUpdate = parseDate(ticket.lastUpdate);
                 if (!parsedLastUpdate) {
-                    console.warn(`⚠️ Ticket ignoré : Date invalide pour ${ticket.ticketNumber}`);
                     return null;
                 }
 
+                const deadline = calculateDeadline(ticket.priority, parsedLastUpdate);
+                const alertTime = calculateAlertTime(ticket.priority, parsedLastUpdate);
+ 
                 return {
                     ...ticket,
                     createdAt: parsedLastUpdate,
                     lastUpdate: parsedLastUpdate,
-                    deadline: calculateDeadline(ticket.priority, parsedLastUpdate),
-                    alertTime: calculateAlertTime(ticket.priority, parsedLastUpdate)
+                    deadline,
+                    alertTime
                 };
             })
             .filter(ticket => ticket !== null);
@@ -123,14 +126,13 @@ exports.saveExtractedTickets = async (req, res) => {
                 { upsert: true }
             );
         }
-        // console.log("✅ Tickets enregistrés avec succès !");
         res.status(201).json({ message: "Tickets enregistrés avec succès !" });
 
     } catch (error) {
-        console.error("❌ Erreur lors de l'enregistrement des tickets :", error);
         res.status(500).json({ message: "Erreur interne du serveur", error: error.message });
     }
 };
+
 
 // 📌 Récupère tous les tickets enregistrés, triés par alerte time croissant
 exports.getExtractedTickets = async (req, res) => {

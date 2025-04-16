@@ -17,7 +17,8 @@ const TicketSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }, // ✅ Date d'ajout dans la BDD
     deadline: { type: Date, required: true }, // ✅ Date limite de traitement du ticket
     alertTime: { type: Date, required: true }, // ✅ Date de l'alerte
-    alertSent: { type: Boolean, default: false } // ✅ Indique si l'alerte a été envoyée
+    alertSent: { type: Boolean, default: false }, // ✅ Indique si l'alerte a été envoyée
+    lastHourAlertSent: { type: Boolean, default: false } // ✅ Indique si l'alerte rouge a été envoyée
 }, { timestamps: true });
 
 module.exports = mongoose.model('Ticket', TicketSchema);

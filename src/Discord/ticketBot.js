@@ -31,83 +31,78 @@ ticketClient.once("ready", () => {
     setInterval(() => {
         checkForAlerts();
     }, 10 * 1000);
+
+    setInterval(() => {
+        const now = new Date();
+        const isMonday = now.getDay() === 1; // Lundi = 1
+        const isNineAM = now.getHours() === 9 && now.getMinutes() === 0;
+
+        if (isMonday && isNineAM) {
+            console.log("🧼 Lancement du nettoyage hebdomadaire du canal Discord...");
+            cleanMessagesWithoutTicket(ticketClient);
+        }
+    }, 60 * 1000); // vérifie chaque minute    
 });
 
 // 🔍 **Vérifie si des tickets ont dépassé leur `alertTime` et envoie une alerte**
 const checkForAlerts = async () => {
-    // console.log("🔍 Vérification des tickets en retard...");
-
     try {
         const now = new Date();
-    
-        const alertTickets = await Ticket.find({
-            alertTime: { $lte: now },
-            alertSent: false
-        }).sort({ alertTime: 1 });
-    
-        if (alertTickets.length === 0) return;
-    
+
+        const tickets = await Ticket.find().sort({ alertTime: 1 });
+
         const channel = ticketClient.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
         if (!channel) {
             console.error("❌ Canal Discord introuvable. Vérifie l'ID.");
             return;
         }
-    
-        for (const ticket of alertTickets) {
-            const result = await Ticket.updateOne(
-                { _id: ticket._id, alertSent: false },
-                { alertSent: true }
-            );
-    
-            if (result.modifiedCount === 0) {
-                console.log(`⏭️ Ticket ${ticket.ticketNumber} déjà traité. Ignoré.`);
-                continue;
-            }
-    
-            const deadlineDate = new Date(ticket.deadline);
-    
-            // 🧠 Calcul du temps restant en heures ouvrées (9h-18h)
+
+        for (const ticket of tickets) {
+            // ✅ Ignorer les tickets qui ne commencent pas par "I"
+            if (!ticket.ticketNumber.startsWith("I")) continue;
+
+            const deadline = new Date(ticket.deadline);
+            const deadlineTimestamp = Math.floor(deadline.getTime() / 1000); // UNIX
+            let timeRemainingHours = 0;
+            let tempDate = new Date(now);
             const WORK_START = 9;
             const WORK_END = 18;
-            let tempDate = new Date(now);
-            let timeRemainingHours = 0;
-    
-            while (tempDate < deadlineDate) {
+
+            // 🔁 Calcul du temps ouvré restant
+            while (tempDate < deadline) {
                 const day = tempDate.getDay();
-                if (day !== 0 && day !== 6) { // Exclure week-end
-                    const workDayStart = new Date(tempDate);
-                    workDayStart.setHours(WORK_START, 0, 0, 0);
-    
-                    const workDayEnd = new Date(tempDate);
-                    workDayEnd.setHours(WORK_END, 0, 0, 0);
-    
-                    if (tempDate < workDayEnd) {
-                        const from = tempDate > workDayStart ? tempDate : workDayStart;
-                        const to = deadlineDate < workDayEnd ? deadlineDate : workDayEnd;
-    
+                if (day !== 0 && day !== 6) {
+                    const workStart = new Date(tempDate);
+                    workStart.setHours(WORK_START, 0, 0, 0);
+                    const workEnd = new Date(tempDate);
+                    workEnd.setHours(WORK_END, 0, 0, 0);
+
+                    if (tempDate < workEnd) {
+                        const from = tempDate > workStart ? tempDate : workStart;
+                        const to = deadline < workEnd ? deadline : workEnd;
+
                         if (to > from) {
                             timeRemainingHours += (to - from) / (1000 * 60 * 60);
                         }
                     }
                 }
-    
-                // Passer au jour suivant
                 tempDate.setDate(tempDate.getDate() + 1);
                 tempDate.setHours(0, 0, 0, 0);
             }
-    
+
+            let fullHours = Math.floor(timeRemainingHours);
+            let remainingMinutes = Math.round((timeRemainingHours % 1) * 60);
+            if (remainingMinutes === 60) {
+                fullHours += 1;
+                remainingMinutes = 0;
+            }
+
             const timeRemaining =
                 timeRemainingHours <= 0
                     ? " (dépassée)"
-                    : ` (${Math.floor(timeRemainingHours)}h${Math.round((timeRemainingHours % 1) * 60)}min restantes)`;
-    
-            const type = ticket.ticketNumber?.startsWith("S")
-                ? "Service"
-                : ticket.ticketNumber?.startsWith("I")
-                ? "Incident"
-                : "Ticket";
-    
-            const deadlineFormatted = deadlineDate.toLocaleString("fr-FR", {
+                    : ` (<t:${deadlineTimestamp}:R>)`;
+
+            const deadlineFormatted = deadline.toLocaleString("fr-FR", {
                 timeZone: "Europe/Paris",
                 day: "2-digit",
                 month: "2-digit",
@@ -116,21 +111,44 @@ const checkForAlerts = async () => {
                 minute: "2-digit",
                 second: "2-digit"
             });
-    
-            const embed = new EmbedBuilder()
-                .setColor(0x00ff00)
-                .setTitle("Client : Nhood")
-                .setDescription(
-                    `${type} P${ticket.priority}, merci de traiter le ticket "**${ticket.ticketNumber}**" svp - Deadline : **${deadlineFormatted}**${timeRemaining}`
-                );
-    
-            await channel.send({ embeds: [embed] });
-            console.log(`✅ Embed envoyé pour ${ticket.ticketNumber}`);
+
+            // ✅ Alerte VERT classique (une seule fois)
+            if (!ticket.alertSent && new Date(ticket.alertTime) <= now) {
+                const greenEmbed = new EmbedBuilder()
+                    .setColor(0x00ff00)
+                    .setTitle("Client : Nhood")
+                    .setDescription(
+                        `Incident P${ticket.priority}, merci de traiter le ticket "**${ticket.ticketNumber}**" svp - Deadline : **${deadlineFormatted}**${timeRemaining}`
+                    );
+                await channel.send({ embeds: [greenEmbed] });
+                console.log(`✅ Message VERT envoyé pour ${ticket.ticketNumber}`);
+
+                await Ticket.updateOne({ _id: ticket._id }, { alertSent: true });
+            }
+
+            // ✅ Alerte ROUGE si ≤ 2h avant la deadline (une seule fois)
+            if (
+                !ticket.lastHourAlertSent &&
+                ticket.ticketNumber.startsWith("I") &&
+                timeRemainingHours <= 0.5
+            ) {
+                const redEmbed = new EmbedBuilder()
+                    .setColor(0xff0000)
+                    .setTitle("Client : Nhood")
+                    .setDescription(
+                        `Incident P${ticket.priority}. Il reste **moins de 30 minutes** au ticket: **${ticket.ticketNumber}**  - Deadline : **${deadlineFormatted}**${timeRemaining}`
+                    );
+                await channel.send({ embeds: [redEmbed] });
+                console.log(`🔴 Message ROUGE envoyé pour ${ticket.ticketNumber}`);
+
+                await Ticket.updateOne({ _id: ticket._id }, { lastHourAlertSent: true });
+            }
         }
     } catch (error) {
         console.error("❌ Erreur lors de la vérification des alertes :", error);
     }
 };
+
 
 // ✅ Commande !alltickets pour voir tous les tickets
 ticketClient.on("messageCreate", async (message) => {
@@ -180,7 +198,74 @@ ticketClient.on("messageCreate", async (message) => {
             message.reply("❌ Une erreur s'est produite lors de la suppression du ticket.");
         }
     }
+
+    // ✅ Commande pour lancer manuellement le nettoyage
+    if (args[0] === "!cleanmessages") {
+        try {
+            await cleanMessagesWithoutTicket(ticketClient);
+        } catch (err) {
+            console.error("❌ Erreur pendant le nettoyage manuel :", err);
+            message.reply("❌ Une erreur est survenue pendant le nettoyage.");
+        }
+    }
 });
+
+const cleanMessagesWithoutTicket = async (client) => {
+    const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
+    if (!channel) return console.error("❌ Canal non trouvé pour le nettoyage.");
+
+    let deletedCount = 0;
+    let lastMessageId = null;
+    let keepGoing = true;
+
+    try {
+        while (keepGoing) {
+            const options = { limit: 100 };
+            if (lastMessageId) options.before = lastMessageId;
+
+            const messages = await channel.messages.fetch(options);
+            if (messages.size === 0) break;
+
+            for (const [, message] of messages) {
+                lastMessageId = message.id;
+
+                let text = message.content || "";
+
+                if (!text && message.embeds.length > 0) {
+                    const embed = message.embeds[0];
+                    if (embed.description) {
+                        text = embed.description;
+                    } else if (embed.fields?.length) {
+                        text = embed.fields.map(f => `${f.name} ${f.value}`).join(" ");
+                    }
+                }
+
+                const match = text.match(/(?:\*\*)?([A-Z]?\d{6}_\d{3})(?:\*\*)?/);
+                if (!match) continue;
+
+                const ticketNumber = match[1];
+                const ticketExists = await Ticket.exists({ ticketNumber });
+
+                if (!ticketExists) {
+                    await message.delete();
+                    console.log(`🧹 Message supprimé pour ticket inexistant : ${ticketNumber}`);
+                    deletedCount++;
+                }
+            }
+
+            // Si on a moins de 100 messages, on est à la fin
+            if (messages.size < 100) keepGoing = false;
+        }
+    } catch (err) {
+        console.error("❌ Erreur pendant le nettoyage automatique :", err);
+    }
+
+    if (deletedCount > 0) {
+        console.log(`✅ Nettoyage terminé : ${deletedCount} message(s) supprimé(s).`);
+    } else {
+        console.log("✅ Nettoyage terminé : aucun message à supprimer.");
+    }
+};
 
 // ✅ Connexion du bot avec son propre token
 ticketClient.login(process.env.DISCORD_TICKET_BOT_TOKEN).catch(err => {
