@@ -135,9 +135,9 @@ const TicketsList = () => {
                 onClick={() =>
                     sendTicketsToBackend([
                         {
-                            ticketNumber: "I250414_979",
+                            ticketNumber: "I250414_949",
                             priority: "2",
-                            lastUpdate: "16/04/2025 15:00:00",
+                            lastUpdate: "17/04/2025 13:00:00",
                         },
                     ])
                 }

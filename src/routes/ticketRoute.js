@@ -7,7 +7,6 @@ const {
     updateTicket 
 } = require('../controllers/ticketController');
 
-const { checkForAlerts } = require("../controllers/notifController"); // ✅ Import du contrôleur des alertes
 
 
 /**

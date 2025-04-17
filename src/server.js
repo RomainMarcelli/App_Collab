@@ -5,9 +5,6 @@ const bodyParser = require('body-parser');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsDoc = require('swagger-jsdoc');
 const { client } = require("./Discord/bot"); // ✅ Import du client Discord
-const { checkForAlerts } = require('./controllers/notifController'); // ✅ Import de la vérification des alertes
-const shinkenRoutes = require('./routes/shinkenRoute'); // ✅ Route Shinken
-const notifRoutes = require('./routes/notifRoute');
 const ticketRoutes = require('./routes/ticketroute'); // ✅ Route pour les tickets extraits
 const { ticketClient } = require("./Discord/ticketBot"); // Bot pour les tickets
 
@@ -29,16 +26,6 @@ mongoose.connect('mongodb://localhost:27017/CDS', {
     useUnifiedTopology: true,
 }).then(() => {
 
-
-    // 🔹 Vérification immédiate après connexion
-    setTimeout(() => {
-        checkForAlerts(client);
-    }, 5000); 
-
-    // 🔹 Vérification des alertes toutes les 15 minutes
-    setInterval(() => {
-        checkForAlerts(client);
-    }, 900000);
 }).catch((error) => {
     console.error('❌ Erreur de connexion à MongoDB:', error);
 });
@@ -68,8 +55,6 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 console.log(`📄 Documentation Swagger disponible sur : http://localhost:${PORT}/api-docs`);
 
 // ✅ Déclaration des routes API
-app.use('/api', notifRoutes);
-app.use('/api/shinken', shinkenRoutes);
 app.use('/api', ticketRoutes);
 
 
