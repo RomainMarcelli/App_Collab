@@ -100,7 +100,9 @@ const checkForAlerts = async () => {
             const timeRemaining =
                 timeRemainingHours <= 0
                     ? " (dépassée)"
-                    : ` (<t:${deadlineTimestamp}:R>)`;
+                    : timeRemainingHours >= 1
+                        ? ` (${fullHours}h restantes)`
+                        : ` (${remainingMinutes}min restantes)`;
 
             const deadlineFormatted = deadline.toLocaleString("fr-FR", {
                 timeZone: "Europe/Paris",
@@ -211,6 +213,63 @@ ticketClient.on("messageCreate", async (message) => {
     }
 
 });
+
+
+// ✅ Supprimer le ticket de la BDD (mais garder le message Discord)
+ticketClient.on("messageReactionAdd", async (reaction, user) => {
+    if (user.bot) return; // Ignore les réactions des bots
+
+    // S'assurer que tout est bien chargé (important pour éviter les erreurs)
+    if (reaction.partial) {
+        try {
+            await reaction.fetch();
+        } catch (error) {
+            console.error("❌ Erreur en récupérant la réaction :", error);
+            return;
+        }
+    }
+
+    // Vérifie si l'emoji est 👍
+    if (reaction.emoji.name === "👍") {
+        try {
+            const message = reaction.message;
+            let text = message.content || "";
+
+            if (!text && message.embeds.length > 0) {
+                const embed = message.embeds[0];
+                if (embed.description) {
+                    text = embed.description;
+                } else if (embed.fields?.length) {
+                    text = embed.fields.map(f => `${f.name} ${f.value}`).join(" ");
+                }
+            }
+
+            // Extraction du numéro de ticket depuis le texte
+            const match = text.match(/(?:\*\*)?([A-Z]?\d{6}_\d{3})(?:\*\*)?/);
+            if (match) {
+                const ticketNumber = match[1];
+                const deleted = await Ticket.findOneAndDelete({ ticketNumber });
+
+                if (deleted) {
+                    console.log(`🗑️ Ticket ${ticketNumber} supprimé de la base de données suite à un 👍`);
+                } else {
+                    console.warn(`⚠️ Ticket ${ticketNumber} introuvable dans la base.`);
+                }
+            } else {
+                console.warn("⚠️ Aucun ticketNumber trouvé dans le message !");
+            }
+
+            // ❌ On ne supprime plus le message Discord
+            // await message.delete();
+            // console.log(`🧹 Message supprimé après réaction 👍`);
+
+        } catch (err) {
+            console.error("❌ Erreur pendant la suppression du ticket par réaction :", err);
+        }
+    }
+});
+
+
 
 const cleanMessagesWithoutTicket = async (client) => {
     const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);

@@ -135,12 +135,12 @@ const TicketsList = () => {
                 onClick={() =>
                     sendTicketsToBackend([
                         {
-                            ticketNumber: "I250414_979",
+                            ticketNumber: "I250414_969",
                             priority: "2",
-                            lastUpdate: "16/04/2025 15:00:00",
+                            lastUpdate: "17/04/2025 14:20:00",
                         },
                     ])
-                }
+                }   
                 className="mt-6 mx-auto block bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:scale-105 hover:shadow-2xl transition duration-300 ease-in-out"
             >
                 📤 Envoyer un ticket test
