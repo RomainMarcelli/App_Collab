@@ -252,6 +252,7 @@ ticketClient.on("messageReactionAdd", async (reaction, user) => {
 
                 if (deleted) {
                     console.log(`🗑️ Ticket ${ticketNumber} supprimé de la base de données suite à un 👍`);
+                    await cleanMessagesWithoutTicket(ticketClient);
                 } else {
                     console.warn(`⚠️ Ticket ${ticketNumber} introuvable dans la base.`);
                 }
