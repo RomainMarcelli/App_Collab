@@ -19,6 +19,7 @@ const holidaysSpecific = [
 const isHoliday = (date) => {
     const mmdd = date.toISOString().slice(5, 10); // ex: "05-01"
     const yyyymmdd = date.toISOString().slice(0, 10); // ex: "2025-05-29"
+    
     return holidaysRecurring.includes(mmdd) || holidaysSpecific.includes(yyyymmdd);
 };
 
