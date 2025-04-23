@@ -2,6 +2,7 @@ const Ticket = require('../models/ticketModel');
 const { addBusinessHours, addBusinessDays } = require('../utils/timeUtils');
 const moment = require("moment-timezone");
 const { Client, GatewayIntentBits } = require("discord.js");
+const { ticketClient, cleanMessagesWithoutTicket } = require("../Discord/ticketBot");
 
 
 // ✅ Fonction pour parser une date au format "13/03/2025 17:00:00" en Date ISO
@@ -126,6 +127,7 @@ exports.saveExtractedTickets = async (req, res) => {
                 { upsert: true }
             );
         }
+        await cleanMessagesWithoutTicket(ticketClient);
         res.status(201).json({ message: "Tickets enregistrés avec succès !" });
 
     } catch (error) {

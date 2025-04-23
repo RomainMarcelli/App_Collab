@@ -130,20 +130,29 @@ const TicketsList = () => {
 
 
             {/* Bouton de test ticket  */}
-
             <button
                 onClick={() =>
                     sendTicketsToBackend([
                         {
-                            ticketNumber: "I250414_819",
+                            ticketNumber: "I250414_919",
                             priority: "2",
-                            lastUpdate: "23/04/2025 09:40:00",
+                            lastUpdate: "23/04/2025 10:47:00",
+                        },
+                        {
+                            ticketNumber: "I250414_800",
+                            priority: "3",
+                            lastUpdate: "22/04/2025 14:30:00",
+                        },
+                        {
+                            ticketNumber: "I250414_801",
+                            priority: "3",
+                            lastUpdate: "22/04/2025 13:00:00",
                         },
                     ])
-                }   
+                }
                 className="mt-6 mx-auto block bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:scale-105 hover:shadow-2xl transition duration-300 ease-in-out"
             >
-                📤 Envoyer un ticket test
+                📤 Envoyer plusieurs tickets tests
             </button>
 
             {/* Liste des tickets */}

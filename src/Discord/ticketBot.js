@@ -12,7 +12,8 @@ const ticketClient = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMessageReactions
-    ]
+    ], 
+    partials: ['MESSAGE', 'CHANNEL', 'REACTION']
 });
 
 // ✅ Connexion à MongoDB
@@ -217,6 +218,7 @@ ticketClient.on("messageCreate", async (message) => {
 
 // ✅ Supprimer le ticket de la BDD (mais garder le message Discord)
 ticketClient.on("messageReactionAdd", async (reaction, user) => {
+    console.log("👍 Réaction détectée !");
     if (user.bot) return; // Ignore les réactions des bots
 
     // S'assurer que tout est bien chargé (important pour éviter les erreurs)
