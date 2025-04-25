@@ -19,7 +19,7 @@ const holidaysSpecific = [
 const isHoliday = (date) => {
     const mmdd = date.toISOString().slice(5, 10); // ex: "05-01"
     const yyyymmdd = date.toISOString().slice(0, 10); // ex: "2025-05-29"
-    
+
     return holidaysRecurring.includes(mmdd) || holidaysSpecific.includes(yyyymmdd);
 };
 
@@ -31,22 +31,36 @@ const isBusinessDay = (date) => {
 
 // ⏰ Ajoute un certain nombre d'heures ouvrées à une date donnée
 const addBusinessHours = (date, hours) => {
-    let remainingMinutes = hours * 60; // Convertit les heures en minutes pour plus de précision
+    let remainingMinutes = hours * 60;
     let newDate = new Date(date);
 
+    // 🕘 Forcer à commencer à 9h si avant, ou le lendemain à 9h si après 18h
+    const hour = newDate.getHours();
+    if (hour < 9) {
+        newDate.setHours(9, 0, 0, 0);
+    } else if (hour >= 18) {
+        newDate.setDate(newDate.getDate() + 1);
+        newDate.setHours(9, 0, 0, 0);
+    }
+
+    // 🧹 Sauter les jours non ouvrés si besoin
+    while (!isBusinessDay(newDate)) {
+        newDate.setDate(newDate.getDate() + 1);
+        newDate.setHours(9, 0, 0, 0);
+    }
+
+    // ⏳ Ajout progressif des minutes dans le cadre ouvré
     while (remainingMinutes > 0) {
         newDate.setMinutes(newDate.getMinutes() + 1);
 
-        // Si on dépasse 18h → passer au lendemain à 9h
         if (newDate.getHours() >= 18) {
             newDate.setDate(newDate.getDate() + 1);
             newDate.setHours(9, 0, 0, 0);
         }
 
-        // Si on est sur un jour non ouvré (week-end ou férié), sauter au jour ouvré suivant
         while (!isBusinessDay(newDate)) {
             newDate.setDate(newDate.getDate() + 1);
-            newDate.setHours(9, 0, 0, 0); // Commencer à 9h le jour ouvré suivant
+            newDate.setHours(9, 0, 0, 0);
         }
 
         remainingMinutes--;
@@ -70,8 +84,38 @@ const addBusinessDays = (date, days) => {
 
         remainingDays--;
     }
+    return newDate;
+};
+
+const subtractBusinessHours = (date, hours) => {
+    let remainingMinutes = hours * 60;
+    let newDate = new Date(date);
+
+    while (remainingMinutes > 0) {
+        newDate.setMinutes(newDate.getMinutes() - 1);
+
+        // Si on passe avant 9h → revenir au jour ouvré précédent à 18h
+        if (newDate.getHours() < 9) {
+            newDate.setDate(newDate.getDate() - 1);
+            newDate.setHours(18, 0, 0, 0);
+        }
+
+        // Si on tombe sur un jour non ouvré, recule jusqu’à un jour ouvré
+        while (!isBusinessDay(newDate)) {
+            newDate.setDate(newDate.getDate() - 1);
+            newDate.setHours(18, 0, 0, 0);
+        }
+
+        remainingMinutes--;
+    }
 
     return newDate;
 };
 
-module.exports = { addBusinessHours, addBusinessDays };
+
+module.exports = {
+    isBusinessDay,
+    addBusinessDays,
+    addBusinessHours,
+    subtractBusinessHours
+};

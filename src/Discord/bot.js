@@ -208,9 +208,12 @@ client.on("messageReactionAdd", async (reaction, user) => {
 
 
 // ✅ Connexion du bot avec le token
-client.login(process.env.DISCORD_TOKEN).catch(err => {
-    console.error("❌ Erreur de connexion au bot Discord :", err);
-});
+if (process.env.NODE_ENV !== "test") {
+    client.login(process.env.DISCORD_TOKEN).catch(err => {
+        console.error("❌ Erreur de connexion au bot Discord :", err);
+    });
+}
+
 
 
 module.exports = { client }; // ✅ Export du client pour pouvoir l'utiliser dans d'autres fichiers

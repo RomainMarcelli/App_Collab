@@ -72,12 +72,26 @@ web_modules/
 # Yarn Integrity file
 .yarn-integrity
 
+# Jest cache and test output
+jest.config.js
+jest.setup.js
+coverage/
+.vitest/
+test-results/
+test-report.xml
+
+# MongoDB test database dumps (optionnel si tu dump localement)
+dump/
+*.mongo
+
 # dotenv environment variable files
 .env
 .env.development.local
 .env.test.local
 .env.production.local
 .env.local
+.env.test
+.env.test.local
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -128,3 +142,15 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Logs and temp files from failed test runs
+test-output/
+tmp/
+*.tmp
+
+# Supertest snapshots or mocks
+__mocks__/
+__snapshots__/
+
+# Custom test app/server if isolated
+testServer.js
