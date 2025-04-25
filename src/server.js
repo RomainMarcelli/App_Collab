@@ -23,26 +23,27 @@ console.log("🕒 Fuseau horaire du serveur :", process.env.TZ);
 app.use(cors());
 app.use(bodyParser.json());
 
-// ✅ Connexion à MongoDB
-mongoose.connect('mongodb://localhost:27017/CDS', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-}).then(() => {
+// ✅ Connexion à MongoDB (uniquement si pas déjà connecté pour les tests)
+if (process.env.NODE_ENV !== 'test') {
+    mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/CDS', {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+    }).then(() => {
+        console.log("✅ Connecté à MongoDB");
 
+        // 🔹 Vérification immédiate après connexion
+        setTimeout(() => {
+            checkForAlerts(client);
+        }, 5000);
 
-    // 🔹 Vérification immédiate après connexion
-    setTimeout(() => {
-        checkForAlerts(client);
-    }, 5000); 
-
-    // 🔹 Vérification des alertes toutes les 15 minutes
-    setInterval(() => {
-        checkForAlerts(client);
-    }, 900000);
-}).catch((error) => {
-    console.error('❌ Erreur de connexion à MongoDB:', error);
-});
-
+        // 🔹 Vérification des alertes toutes les 15 minutes
+        setInterval(() => {
+            checkForAlerts(client);
+        }, 900000);
+    }).catch((error) => {
+        console.error('❌ Erreur de connexion à MongoDB:', error);
+    });
+}
 // ✅ Configuration de Swagger
 const swaggerOptions = {
     definition: {
@@ -85,6 +86,11 @@ app.use((err, req, res, next) => {
 });
 
 // ✅ Démarrer le serveur
-app.listen(PORT, () => {
-    console.log(`🚀 Serveur en cours d'exécution sur http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+    app.listen(PORT, () => {
+        console.log(`🚀 Serveur en cours d'exécution sur http://localhost:${PORT}`);
+    });
+}
+
+
+module.exports = app;

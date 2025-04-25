@@ -1,7 +1,8 @@
 const Ticket = require('../models/ticketModel');
-const { addBusinessHours, addBusinessDays } = require('../utils/timeUtils');
+const { addBusinessHours, addBusinessDays, subtractBusinessHours } = require('../utils/timeUtils');
 const moment = require("moment-timezone");
 const { Client, GatewayIntentBits } = require("discord.js");
+const { ticketClient, cleanMessagesWithoutTicket } = require("../Discord/ticketBot");
 
 
 // ✅ Fonction pour parser une date au format "13/03/2025 17:00:00" en Date ISO
@@ -55,7 +56,7 @@ const calculateAlertTime = (priority, lastUpdate) => {
         }
 
         const deadline = calculateDeadline(priority, adjustedDate);
-        return new Date(deadline.getTime() - 3 * 60 * 60 * 1000); // 3h avant
+        return subtractBusinessHours(deadline, 3);
     }
 
     // 👇 Calcul spécifique pour P2 et P3 : à partir de la deadline !
@@ -65,9 +66,9 @@ const calculateAlertTime = (priority, lastUpdate) => {
         case "1":
             return addBusinessHours(adjustedDate, 10 / 3600); // 10s
         case "2":
-            return new Date(deadline.getTime() - 1 * 60 * 60 * 1000); // 1h avant
+            return subtractBusinessHours(deadline, 1);
         case "3":
-            return new Date(deadline.getTime() - 1.5 * 60 * 60 * 1000); // 1h30 avant
+            return subtractBusinessHours(deadline, 1.5);
         default:
             return adjustedDate;
     }
@@ -104,7 +105,7 @@ exports.saveExtractedTickets = async (req, res) => {
 
                 const deadline = calculateDeadline(ticket.priority, parsedLastUpdate);
                 const alertTime = calculateAlertTime(ticket.priority, parsedLastUpdate);
- 
+
                 return {
                     ...ticket,
                     createdAt: parsedLastUpdate,
@@ -120,12 +121,23 @@ exports.saveExtractedTickets = async (req, res) => {
         }
 
         for (const ticket of validTickets) {
+            const existing = await Ticket.findOne({ ticketNumber: ticket.ticketNumber });
+            
+            const preservedFrozen = existing?.frozen === true;
+        
             await Ticket.updateOne(
                 { ticketNumber: ticket.ticketNumber },
-                { $set: ticket },
+                {
+                    $set: {
+                        ...ticket,
+                        frozen: preservedFrozen // ← préserver l’état figé s’il l’était déjà
+                    }
+                },
                 { upsert: true }
             );
         }
+        
+        await cleanMessagesWithoutTicket(ticketClient);
         res.status(201).json({ message: "Tickets enregistrés avec succès !" });
 
     } catch (error) {
@@ -205,7 +217,8 @@ exports.checkForAlerts = async (client) => {
         // 🔎 Récupère les tickets dont l'alertTime est dépassé et qui n'ont pas encore été signalés
         const alertTickets = await Ticket.find({
             alertTime: { $lte: now },
-            alertSent: false
+            alertSent: false,
+            frozen: { $ne: true } // 🔒 Ignorer les tickets figés
         }).sort({ alertTime: 1 });
 
         if (alertTickets.length === 0) {

@@ -3,7 +3,11 @@ const { Client, GatewayIntentBits } = require("discord.js");
 const mongoose = require("mongoose");
 const Ticket = require("../models/ticketModel");
 const { EmbedBuilder } = require("discord.js");
+const { isBusinessDay } = require("../utils/timeUtils");
 
+
+// Changement de couleur quand un ticket est pris . quand un ticket est pris en compte avce un pouce 
+// Donc enlever la focntion de supprimer l'historique des msg du bot
 
 // ✅ Création du client Discord
 const ticketClient = new Client({
@@ -12,7 +16,8 @@ const ticketClient = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMessageReactions
-    ]
+    ],
+    partials: ['MESSAGE', 'CHANNEL', 'REACTION']
 });
 
 // ✅ Connexion à MongoDB
@@ -60,6 +65,7 @@ const checkForAlerts = async () => {
         for (const ticket of tickets) {
             // ✅ Ignorer les tickets qui ne commencent pas par "I"
             if (!ticket.ticketNumber.startsWith("I")) continue;
+            if (ticket.frozen) continue;
 
             const deadline = new Date(ticket.deadline);
             const deadlineTimestamp = Math.floor(deadline.getTime() / 1000); // UNIX
@@ -70,8 +76,7 @@ const checkForAlerts = async () => {
 
             // 🔁 Calcul du temps ouvré restant
             while (tempDate < deadline) {
-                const day = tempDate.getDay();
-                if (day !== 0 && day !== 6) {
+                if (isBusinessDay(tempDate)) {
                     const workStart = new Date(tempDate);
                     workStart.setHours(WORK_START, 0, 0, 0);
                     const workEnd = new Date(tempDate);
@@ -100,7 +105,11 @@ const checkForAlerts = async () => {
             const timeRemaining =
                 timeRemainingHours <= 0
                     ? " (dépassée)"
-                    : ` (<t:${deadlineTimestamp}:R>)`;
+                    : fullHours > 0 && remainingMinutes > 0
+                        ? ` (${fullHours}h ${remainingMinutes}min restantes)`
+                        : fullHours > 0
+                            ? ` (${fullHours}h restantes)`
+                            : ` (${remainingMinutes}min restantes)`;
 
             const deadlineFormatted = deadline.toLocaleString("fr-FR", {
                 timeZone: "Europe/Paris",
@@ -203,12 +212,68 @@ ticketClient.on("messageCreate", async (message) => {
     if (args[0] === "!cleanmessages") {
         try {
             await cleanMessagesWithoutTicket(ticketClient);
+            await message.delete(); // 🔥 Supprime le message "!cleanmessages"
         } catch (err) {
             console.error("❌ Erreur pendant le nettoyage manuel :", err);
             message.reply("❌ Une erreur est survenue pendant le nettoyage.");
         }
     }
+
 });
+
+
+// // ✅ Réaction 👍 : fige le ticket en BDD pour ne plus recevoir d’alerte
+ticketClient.on("messageReactionAdd", async (reaction, user) => {
+    if (user.bot) return;
+
+    if (reaction.partial) {
+        try {
+            await reaction.fetch();
+        } catch (error) {
+            console.error("❌ Erreur en récupérant la réaction :", error);
+            return;
+        }
+    }
+
+    if (reaction.emoji.name === "👍") {
+        try {
+            const message = reaction.message;
+            let text = message.content || "";
+
+            if (!text && message.embeds.length > 0) {
+                const embed = message.embeds[0];
+                if (embed.description) {
+                    text = embed.description;
+                } else if (embed.fields?.length) {
+                    text = embed.fields.map(f => `${f.name} ${f.value}`).join(" ");
+                }
+            }
+
+            const match = text.match(/(?:\*\*)?([A-Z]?\d{6}_\d{3})(?:\*\*)?/);
+            if (match) {
+                const ticketNumber = match[1];
+                const ticket = await Ticket.findOne({ ticketNumber });
+
+                if (ticket) {
+                    // ✅ On ajoute un nouveau champ : frozen = true
+                    ticket.alertSent = true;
+                    ticket.lastHourAlertSent = true;
+                    ticket.frozen = true; // <-- ce champ à ajouter dans ton modèle
+                    await ticket.save();
+
+                    console.log(`⛔ Ticket ${ticketNumber} figé suite à un 👍 (plus aucune alerte).`);
+                } else {
+                    console.warn(`⚠️ Ticket ${ticketNumber} non trouvé.`);
+                }
+            } else {
+                console.warn("⚠️ Aucun numéro de ticket détecté dans le message.");
+            }
+        } catch (err) {
+            console.error("❌ Erreur lors du traitement du 👍 :", err);
+        }
+    }
+});
+
 
 const cleanMessagesWithoutTicket = async (client) => {
     const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
@@ -244,27 +309,42 @@ const cleanMessagesWithoutTicket = async (client) => {
                 if (!match) continue;
 
                 const ticketNumber = match[1];
-                const ticketExists = await Ticket.exists({ ticketNumber });
+                const ticket = await Ticket.findOne({ ticketNumber });
 
-                if (!ticketExists) {
-                    await message.delete();
-                    console.log(`🧹 Message supprimé pour ticket inexistant : ${ticketNumber}`);
-                    deletedCount++;
+                // 🔒 NE JAMAIS SUPPRIMER si une réaction 👍 est présente
+                const hasThumbsUp = message.reactions.cache.some(
+                    r => r.emoji.name === "👍" && r.count > 0
+                );
+                if (hasThumbsUp) {
+                    console.log(`⏸️ Message conservé (👍 présent) pour ticket ${ticketNumber}`);
+                    continue;
                 }
+
+                if (!ticket) {
+                    await message.delete();
+                    console.log(`🗑️ Message supprimé : ticket ${ticketNumber} introuvable.`);
+                    deletedCount++;
+                    continue;
+                }
+
+                // ✅ Conserver si ticket figé
+                if (ticket.frozen || (ticket.alertSent && ticket.lastHourAlertSent)) {
+                    console.log(`⏸️ Message conservé : ticket ${ticketNumber} figé.`);
+                    continue;
+                }
+
+                await message.delete();
+                console.log(`🗑️ Message supprimé : ticket ${ticketNumber} non figé.`);
+                deletedCount++;
             }
 
-            // Si on a moins de 100 messages, on est à la fin
             if (messages.size < 100) keepGoing = false;
         }
     } catch (err) {
-        console.error("❌ Erreur pendant le nettoyage automatique :", err);
+        console.error("❌ Erreur pendant le nettoyage :", err);
     }
 
-    if (deletedCount > 0) {
-        console.log(`✅ Nettoyage terminé : ${deletedCount} message(s) supprimé(s).`);
-    } else {
-        console.log("✅ Nettoyage terminé : aucun message à supprimer.");
-    }
+    console.log(`✅ Nettoyage terminé : ${deletedCount} message(s) supprimé(s).`);
 };
 
 // ✅ Connexion du bot avec son propre token
