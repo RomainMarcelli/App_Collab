@@ -100,7 +100,9 @@ const checkForAlerts = async () => {
             const timeRemaining =
                 timeRemainingHours <= 0
                     ? " (dépassée)"
-                    : ` (<t:${deadlineTimestamp}:R>)`;
+                    : timeRemainingHours >= 1
+                        ? `(${fullHours}h restantes)`
+                        : `(${remainingMinutes}min restantes);`
 
             const deadlineFormatted = deadline.toLocaleString("fr-FR", {
                 timeZone: "Europe/Paris",
