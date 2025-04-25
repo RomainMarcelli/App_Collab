@@ -121,12 +121,22 @@ exports.saveExtractedTickets = async (req, res) => {
         }
 
         for (const ticket of validTickets) {
+            const existing = await Ticket.findOne({ ticketNumber: ticket.ticketNumber });
+            
+            const preservedFrozen = existing?.frozen === true;
+        
             await Ticket.updateOne(
                 { ticketNumber: ticket.ticketNumber },
-                { $set: ticket },
+                {
+                    $set: {
+                        ...ticket,
+                        frozen: preservedFrozen // ← préserver l’état figé s’il l’était déjà
+                    }
+                },
                 { upsert: true }
             );
         }
+        
         await cleanMessagesWithoutTicket(ticketClient);
         res.status(201).json({ message: "Tickets enregistrés avec succès !" });
 
@@ -207,7 +217,8 @@ exports.checkForAlerts = async (client) => {
         // 🔎 Récupère les tickets dont l'alertTime est dépassé et qui n'ont pas encore été signalés
         const alertTickets = await Ticket.find({
             alertTime: { $lte: now },
-            alertSent: false
+            alertSent: false,
+            frozen: { $ne: true } // 🔒 Ignorer les tickets figés
         }).sort({ alertTime: 1 });
 
         if (alertTickets.length === 0) {

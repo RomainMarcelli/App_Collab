@@ -136,17 +136,17 @@ const TicketsList = () => {
                         {
                             ticketNumber: "I250414_929",
                             priority: "2",
-                            lastUpdate: "24/04/2025 10:30:00",
+                            lastUpdate: "25/04/2025 16:59:00",
                         },
                         {
                             ticketNumber: "I250414_100",
                             priority: "3",
-                            lastUpdate: "23/04/2025 14:20:00",
+                            lastUpdate: "25/04/2025 10:20:00",
                         },
                         {
                             ticketNumber: "I250414_831",
                             priority: "3",
-                            lastUpdate: "23/04/2025 14:00:00",
+                            lastUpdate: "25/04/2025 12:00:00",
                         },
                     ])
                 }

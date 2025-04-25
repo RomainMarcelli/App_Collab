@@ -97,61 +97,61 @@ client.on("messageCreate", async (message) => {
     }
 });
 
-client.on("messageReactionAdd", async (reaction, user) => {
-    if (user.bot) return;
+// client.on("messageReactionAdd", async (reaction, user) => {
+//     if (user.bot) return;
 
-    if (reaction.emoji.name !== "👍") return;
+//     if (reaction.emoji.name !== "👍") return;
 
-    console.log("📥 Réaction détectée !");
-    console.log(`✅ Réaction 👍 ajoutée par ${user.username}`);
+//     console.log("📥 Réaction détectée !");
+//     console.log(`✅ Réaction 👍 ajoutée par ${user.username}`);
 
-    try {
-        // Assure-toi que tout est bien chargé
-        if (reaction.partial) await reaction.fetch();
-        if (reaction.message.partial) await reaction.message.fetch();
+//     try {
+//         // Assure-toi que tout est bien chargé
+//         if (reaction.partial) await reaction.fetch();
+//         if (reaction.message.partial) await reaction.message.fetch();
 
-        // 💣 Supprime le message Discord en premier
-        try {
-            await reaction.message.delete();
-            console.log("🗑️ Message supprimé de Discord.");
-        } catch (err) {
-            console.error("❌ Erreur lors de la suppression du message :", err);
-        }
+//         // 💣 Supprime le message Discord en premier
+//         try {
+//             await reaction.message.delete();
+//             console.log("🗑️ Message supprimé de Discord.");
+//         } catch (err) {
+//             console.error("❌ Erreur lors de la suppression du message :", err);
+//         }
 
-        // 📦 Optionnel : suppression du ticket en base s'il existe
-        let messageContent = reaction.message.content || "";
-        if (!messageContent && reaction.message.embeds.length > 0) {
-            const embed = reaction.message.embeds[0];
-            if (embed.description) {
-                messageContent = embed.description;
-            } else if (embed.fields?.length) {
-                messageContent = embed.fields.map(f => `${f.name} ${f.value}`).join(" ");
-            }
-        }
+//         // 📦 Optionnel : suppression du ticket en base s'il existe
+//         let messageContent = reaction.message.content || "";
+//         if (!messageContent && reaction.message.embeds.length > 0) {
+//             const embed = reaction.message.embeds[0];
+//             if (embed.description) {
+//                 messageContent = embed.description;
+//             } else if (embed.fields?.length) {
+//                 messageContent = embed.fields.map(f => `${f.name} ${f.value}`).join(" ");
+//             }
+//         }
 
-        console.log("📝 Contenu du message :", messageContent);
+//         console.log("📝 Contenu du message :", messageContent);
 
-        const match = messageContent.match(/(?:\*\*)?([A-Z]?\d{6}_\d{3})(?:\*\*)?/);
-        if (!match) {
-            console.log("ℹ️ Aucun numéro de ticket trouvé — pas grave.");
-            return;
-        }
+//         const match = messageContent.match(/(?:\*\*)?([A-Z]?\d{6}_\d{3})(?:\*\*)?/);
+//         if (!match) {
+//             console.log("ℹ️ Aucun numéro de ticket trouvé — pas grave.");
+//             return;
+//         }
 
-        const ticketNumber = match[1];
-        console.log(`⚡ Tentative de suppression du ticket : ${ticketNumber}`);
+//         const ticketNumber = match[1];
+//         console.log(`⚡ Tentative de suppression du ticket : ${ticketNumber}`);
 
-        const deletedTicket = await Notif.findOneAndDelete({ ticketNumber });
+//         const deletedTicket = await Notif.findOneAndDelete({ ticketNumber });
 
-        if (deletedTicket) {
-            console.log(`✅ Ticket ${ticketNumber} supprimé de la base de données.`);
-        } else {
-            console.log(`ℹ️ Ticket ${ticketNumber} introuvable dans la base de données (déjà supprimé ?).`);
-        }
+//         if (deletedTicket) {
+//             console.log(`✅ Ticket ${ticketNumber} supprimé de la base de données.`);
+//         } else {
+//             console.log(`ℹ️ Ticket ${ticketNumber} introuvable dans la base de données (déjà supprimé ?).`);
+//         }
 
-    } catch (error) {
-        console.error("❌ Erreur générale lors du traitement de la réaction :", error);
-    }
-});
+//     } catch (error) {
+//         console.error("❌ Erreur générale lors du traitement de la réaction :", error);
+//     }
+// });
 
 // const cleanMessagesWithoutTicket = async (client) => {
 //     const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);

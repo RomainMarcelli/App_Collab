@@ -65,6 +65,7 @@ const checkForAlerts = async () => {
         for (const ticket of tickets) {
             // ✅ Ignorer les tickets qui ne commencent pas par "I"
             if (!ticket.ticketNumber.startsWith("I")) continue;
+            if (ticket.frozen) continue;
 
             const deadline = new Date(ticket.deadline);
             const deadlineTimestamp = Math.floor(deadline.getTime() / 1000); // UNIX
@@ -221,9 +222,8 @@ ticketClient.on("messageCreate", async (message) => {
 });
 
 
-// ✅ Réaction 👍 : fige le ticket en BDD pour ne plus recevoir d’alerte
+// // ✅ Réaction 👍 : fige le ticket en BDD pour ne plus recevoir d’alerte
 ticketClient.on("messageReactionAdd", async (reaction, user) => {
-    console.log("👍 Réaction détectée !");
     if (user.bot) return;
 
     if (reaction.partial) {
@@ -255,23 +255,25 @@ ticketClient.on("messageReactionAdd", async (reaction, user) => {
                 const ticket = await Ticket.findOne({ ticketNumber });
 
                 if (ticket) {
-                    // ✅ On fige le ticket en mettant les alertes comme déjà envoyées
+                    // ✅ On ajoute un nouveau champ : frozen = true
                     ticket.alertSent = true;
                     ticket.lastHourAlertSent = true;
+                    ticket.frozen = true; // <-- ce champ à ajouter dans ton modèle
                     await ticket.save();
 
-                    console.log(`⛔ Ticket ${ticketNumber} figé suite à une réaction 👍 (plus d'alertes)`);
+                    console.log(`⛔ Ticket ${ticketNumber} figé suite à un 👍 (plus aucune alerte).`);
                 } else {
-                    console.warn(`⚠️ Ticket ${ticketNumber} non trouvé pour mise à jour.`);
+                    console.warn(`⚠️ Ticket ${ticketNumber} non trouvé.`);
                 }
             } else {
-                console.warn("⚠️ Aucun ticketNumber trouvé dans le message !");
+                console.warn("⚠️ Aucun numéro de ticket détecté dans le message.");
             }
         } catch (err) {
-            console.error("❌ Erreur pendant la mise à jour du ticket via 👍 :", err);
+            console.error("❌ Erreur lors du traitement du 👍 :", err);
         }
     }
 });
+
 
 const cleanMessagesWithoutTicket = async (client) => {
     const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
@@ -309,21 +311,30 @@ const cleanMessagesWithoutTicket = async (client) => {
                 const ticketNumber = match[1];
                 const ticket = await Ticket.findOne({ ticketNumber });
 
+                // 🔒 NE JAMAIS SUPPRIMER si une réaction 👍 est présente
+                const hasThumbsUp = message.reactions.cache.some(
+                    r => r.emoji.name === "👍" && r.count > 0
+                );
+                if (hasThumbsUp) {
+                    console.log(`⏸️ Message conservé (👍 présent) pour ticket ${ticketNumber}`);
+                    continue;
+                }
+
                 if (!ticket) {
                     await message.delete();
-                    console.log(`🗑️ Message supprimé de Discord. ❌ Ticket ${ticketNumber} introuvable en BDD.`);
+                    console.log(`🗑️ Message supprimé : ticket ${ticketNumber} introuvable.`);
                     deletedCount++;
                     continue;
                 }
 
-                // ✅ NE PAS supprimer si le ticket est figé (👍)
-                if (ticket.alertSent && ticket.lastHourAlertSent) {
-                    console.log(`⏸️ Message conservé : Ticket ${ticketNumber} figé (👍).`);
+                // ✅ Conserver si ticket figé
+                if (ticket.frozen || (ticket.alertSent && ticket.lastHourAlertSent)) {
+                    console.log(`⏸️ Message conservé : ticket ${ticketNumber} figé.`);
                     continue;
                 }
 
                 await message.delete();
-                console.log(`🗑️ Message supprimé de Discord. ⏱️ Ticket ${ticketNumber} non figé.`);
+                console.log(`🗑️ Message supprimé : ticket ${ticketNumber} non figé.`);
                 deletedCount++;
             }
 
@@ -333,11 +344,7 @@ const cleanMessagesWithoutTicket = async (client) => {
         console.error("❌ Erreur pendant le nettoyage :", err);
     }
 
-    if (deletedCount > 0) {
-        console.log(`✅ Nettoyage terminé : ${deletedCount} message(s) supprimé(s).`);
-    } else {
-        console.log("✅ Nettoyage terminé : aucun message à supprimer.");
-    }
+    console.log(`✅ Nettoyage terminé : ${deletedCount} message(s) supprimé(s).`);
 };
 
 // ✅ Connexion du bot avec son propre token

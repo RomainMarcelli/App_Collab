@@ -18,7 +18,8 @@ const TicketSchema = new mongoose.Schema({
     deadline: { type: Date, required: true }, // ✅ Date limite de traitement du ticket
     alertTime: { type: Date, required: true }, // ✅ Date de l'alerte
     alertSent: { type: Boolean, default: false }, // ✅ Indique si l'alerte a été envoyée
-    lastHourAlertSent: { type: Boolean, default: false } // ✅ Indique si l'alerte rouge a été envoyée
+    lastHourAlertSent: { type: Boolean, default: false }, // ✅ Indique si l'alerte rouge a été envoyée
+    frozen: { type: Boolean, default: false }  // ✅ Ajout pour figer un ticket suite à un 👍
 }, { timestamps: true });
 
 module.exports = mongoose.model('Ticket', TicketSchema);
