@@ -37,8 +37,8 @@ const calculateDeadline = (priority, lastUpdate) => {
     }
 
     switch (priority) {
-        case "1": return new Date(adjustedDate.getTime() + 1 * 60 * 60 * 1000);
-        case "2": return new Date(adjustedDate.getTime() + 2 * 60 * 60 * 1000);
+        case "1": return addBusinessHours(adjustedDate, 1);
+        case "2": return addBusinessHours(adjustedDate, 2);
         case "3": return addBusinessHours(adjustedDate, 8);
         default: return adjustedDate;
     }
@@ -122,9 +122,9 @@ exports.saveExtractedTickets = async (req, res) => {
 
         for (const ticket of validTickets) {
             const existing = await Ticket.findOne({ ticketNumber: ticket.ticketNumber });
-            
+
             const preservedFrozen = existing?.frozen === true;
-        
+
             await Ticket.updateOne(
                 { ticketNumber: ticket.ticketNumber },
                 {
@@ -136,7 +136,7 @@ exports.saveExtractedTickets = async (req, res) => {
                 { upsert: true }
             );
         }
-        
+
         await cleanMessagesWithoutTicket(ticketClient);
         res.status(201).json({ message: "Tickets enregistrés avec succès !" });
 
