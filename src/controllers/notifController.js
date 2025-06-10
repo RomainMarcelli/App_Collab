@@ -5,8 +5,6 @@ const { addBusinessHours, addBusinessDays } = require('../utils/timeUtils');
 const DeletedNotif = require('../models/deletedNotifModel'); // ✅ Import du modèle des tickets supprimés
 
 // Fonction pour calculer la deadline en fonction de la priorité
-
-// Fonction pour calculer la deadline en fonction de la priorité
 const calculateDeadline = (priority, createdAt = null) => {
     const now = createdAt ? new Date(createdAt) : new Date();
     const businessStartHour = 9;
@@ -23,11 +21,12 @@ const calculateDeadline = (priority, createdAt = null) => {
     }
 
     switch (priority) {
-        case "1": return new Date(now.getTime() + 1 * 60 * 60 * 1000);
-        case "2": return new Date(now.getTime() + 2 * 60 * 60 * 1000);
+        case "1": return addBusinessHours(now, 1); // au lieu de new Date(now.getTime() + ...)
+        case "2": return addBusinessHours(now, 2);
         case "3": return addBusinessHours(now, 8);
         default: return now;
     }
+
 };
 
 const calculateAlertTime = (priority, createdAt) => {
@@ -46,11 +45,13 @@ const calculateAlertTime = (priority, createdAt) => {
     }
 
     switch (priority) {
-        case "1": alertOffset = 10 / 3600; break;
-        case "2": alertOffset = 15 / 60; break;
+        case "1": alertOffset = 10 / 60; break; // 10 minutes = 0.1667 h
+        case "2": alertOffset = 15 / 60; break; // 15 minutes = 0.25 h
         case "3": alertOffset = 5; break;
         default: alertOffset = 0;
     }
+    return addBusinessHours(new Date(createdAt), alertOffset);
+
     return addBusinessHours(new Date(createdAt), alertOffset);
 };
 

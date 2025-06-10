@@ -6,9 +6,9 @@ describe('Tests avancés de addBusinessHours et addBusinessDays', () => {
       label: "Ajout de 4h avant un jour férié (Ascension)",
       inputDate: new Date("2025-05-28T16:00:00"),
       hoursToAdd: 4,
-      expectedHoursResult: new Date("2025-05-30T11:00:00"), // ✅ CORRECT
+      expectedHoursResult: new Date("2025-05-30T11:00:00"),
       daysToAdd: 2,
-      expectedDaysResult: new Date("2025-06-02T16:00:00"), // ✅ CORRIGÉ ici !
+      expectedDaysResult: new Date("2025-06-02T16:00:00"),
     },
     {
       label: "Ajout de 8h autour de Noël (jour férié récurrent)",
@@ -24,6 +24,13 @@ describe('Tests avancés de addBusinessHours et addBusinessDays', () => {
       hoursToAdd: 0,
       daysToAdd: 1,
       expectedDaysResult: new Date("2025-04-21T10:00:00"),
+    },
+    {
+      label: "Ajout de 1 jour ouvré avant le Lundi de Pentecôte",
+      inputDate: new Date("2025-06-06T10:00:00"), // Vendredi
+      hoursToAdd: 0,
+      daysToAdd: 1,
+      expectedDaysResult: new Date("2025-06-10T10:00:00"), // Mardi car lundi 9 = férié
     },
   ];
 

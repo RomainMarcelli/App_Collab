@@ -26,19 +26,17 @@ const calculateDeadline = (priority, lastUpdate) => {
 
     if (priority === "4" || priority === "5") {
         if (adjustedDate.getHours() >= 18) {
-            // Créé après 18h → passe au jour ouvré suivant à 9h
             adjustedDate = addBusinessDays(adjustedDate, 1);
             adjustedDate.setHours(9, 0, 0, 0);
         } else if (adjustedDate.getHours() < 9) {
-            // Créé avant 9h → reste aujourd’hui, mais commence à 9h
             adjustedDate.setHours(9, 0, 0, 0);
         }
         return addBusinessDays(adjustedDate, priority === "4" ? 3 : 5);
     }
 
     switch (priority) {
-        case "1": return new Date(adjustedDate.getTime() + 1 * 60 * 60 * 1000);
-        case "2": return new Date(adjustedDate.getTime() + 2 * 60 * 60 * 1000);
+        case "1": return addBusinessHours(adjustedDate, 1);
+        case "2": return addBusinessHours(adjustedDate, 2);
         case "3": return addBusinessHours(adjustedDate, 8);
         default: return adjustedDate;
     }

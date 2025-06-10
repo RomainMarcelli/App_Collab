@@ -1,3 +1,5 @@
+const moment = require('moment-timezone');
+
 // 📅 Jours fériés récurrents (peu importe l'année)
 const holidaysRecurring = [
     "01-01", // Jour de l'an
@@ -31,42 +33,47 @@ const isBusinessDay = (date) => {
 
 // ⏰ Ajoute un certain nombre d'heures ouvrées à une date donnée
 const addBusinessHours = (date, hours) => {
+    const tz = "Europe/Paris";
+    let current = moment.tz(date, tz);
+
+    // Avancer au prochain jour ouvré si besoin
+    while (!isBusinessDay(current.toDate())) {
+        current = current.add(1, 'day').hour(9).minute(0).second(0).millisecond(0);
+    }
+
+    // Si avant 9h → début à 9h
+    if (current.hour() < 9) {
+        current = current.hour(9).minute(0).second(0).millisecond(0);
+    }
+
+    // Si après 18h → prochain jour ouvré à 9h
+    if (current.hour() >= 18) {
+        do {
+            current = current.add(1, 'day');
+        } while (!isBusinessDay(current.toDate()));
+        current = current.hour(9).minute(0).second(0).millisecond(0);
+    }
+
     let remainingMinutes = hours * 60;
-    let newDate = new Date(date);
 
-    // 🕘 Forcer à commencer à 9h si avant, ou le lendemain à 9h si après 18h
-    const hour = newDate.getHours();
-    if (hour < 9) {
-        newDate.setHours(9, 0, 0, 0);
-    } else if (hour >= 18) {
-        newDate.setDate(newDate.getDate() + 1);
-        newDate.setHours(9, 0, 0, 0);
-    }
-
-    // 🧹 Sauter les jours non ouvrés si besoin
-    while (!isBusinessDay(newDate)) {
-        newDate.setDate(newDate.getDate() + 1);
-        newDate.setHours(9, 0, 0, 0);
-    }
-
-    // ⏳ Ajout progressif des minutes dans le cadre ouvré
     while (remainingMinutes > 0) {
-        newDate.setMinutes(newDate.getMinutes() + 1);
+        current = current.add(1, 'minute');
 
-        if (newDate.getHours() >= 18) {
-            newDate.setDate(newDate.getDate() + 1);
-            newDate.setHours(9, 0, 0, 0);
+        if (current.hour() >= 18) {
+            do {
+                current = current.add(1, 'day');
+            } while (!isBusinessDay(current.toDate()));
+            current = current.hour(9).minute(0).second(0).millisecond(0);
         }
 
-        while (!isBusinessDay(newDate)) {
-            newDate.setDate(newDate.getDate() + 1);
-            newDate.setHours(9, 0, 0, 0);
+        while (!isBusinessDay(current.toDate())) {
+            current = current.add(1, 'day').hour(9).minute(0).second(0).millisecond(0);
         }
 
         remainingMinutes--;
     }
 
-    return newDate;
+    return current.toDate();
 };
 
 // 📆 Ajoute un certain nombre de jours ouvrés à une date donnée
