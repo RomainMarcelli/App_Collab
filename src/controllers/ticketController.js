@@ -26,11 +26,9 @@ const calculateDeadline = (priority, lastUpdate) => {
 
     if (priority === "4" || priority === "5") {
         if (adjustedDate.getHours() >= 18) {
-            // Créé après 18h → passe au jour ouvré suivant à 9h
             adjustedDate = addBusinessDays(adjustedDate, 1);
             adjustedDate.setHours(9, 0, 0, 0);
         } else if (adjustedDate.getHours() < 9) {
-            // Créé avant 9h → reste aujourd’hui, mais commence à 9h
             adjustedDate.setHours(9, 0, 0, 0);
         }
         return addBusinessDays(adjustedDate, priority === "4" ? 3 : 5);
@@ -122,9 +120,9 @@ exports.saveExtractedTickets = async (req, res) => {
 
         for (const ticket of validTickets) {
             const existing = await Ticket.findOne({ ticketNumber: ticket.ticketNumber });
-
+            
             const preservedFrozen = existing?.frozen === true;
-
+        
             await Ticket.updateOne(
                 { ticketNumber: ticket.ticketNumber },
                 {
@@ -136,7 +134,7 @@ exports.saveExtractedTickets = async (req, res) => {
                 { upsert: true }
             );
         }
-
+        
         await cleanMessagesWithoutTicket(ticketClient);
         res.status(201).json({ message: "Tickets enregistrés avec succès !" });
 

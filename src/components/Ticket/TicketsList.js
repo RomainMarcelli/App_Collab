@@ -134,9 +134,24 @@ const TicketsList = () => {
                 onClick={() =>
                     sendTicketsToBackend([
                         {
-                            ticketNumber: "I250414_129",
-                            priority: "2",
-                            lastUpdate: "13/05/2025 16:50:00",
+                            ticketNumber: "I250414_894", // dimanche avant férié
+                            priority: "3",
+                            lastUpdate: "08/06/2025 10:00:00",
+                        },
+                        {
+                            ticketNumber: "I250414_893", // lundi de Pentecôte
+                            priority: "3",
+                            lastUpdate: "09/06/2025 10:00:00",
+                        },
+                        {
+                            ticketNumber: "I250414_892", // mardi matin
+                            priority: "3",
+                            lastUpdate: "10/06/2025 08:00:00",
+                        },
+                        {
+                            ticketNumber: "I250414_891", // mardi pendant la journée
+                            priority: "3",
+                            lastUpdate: "10/06/2025 09:30:00",
                         },
                     ])
                 }
